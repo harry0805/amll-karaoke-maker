@@ -10,7 +10,7 @@ try {
     <p ttm:agent="v1" begin="0s" end="1.8s"><span begin="0s" end="0.8s">Golden </span><span begin="0.8s" end="1.8s">words</span><span ttm:role="x-bg" begin="0.5s" end="3s"><span begin="0.5s" end="3s">Echo</span></span></p>
     <p ttm:agent="v2" begin="3.2s" end="4s"><span begin="3.2s" end="4s">Next line</span></p>
   </div></body></tt>`;
-  let settings = { ...defaults, textColor: '#ffd45a', outlineWidth: 8, offset: 500 };
+  let settings = { ...defaults, fontSize: 4.4, bottom: 4, height: 32, textColor: '#ffd45a', duetColor: '#7dd3fc', outlineColor: '#14141c', outlineWidth: 8, offset: 500 };
   await page.route('**/api/jobs/style-test/config', route => route.fulfill({ json: { ttml, settings } }));
   async function load() {
     await page.goto(`${origin}/render?job=style-test`);
@@ -61,6 +61,17 @@ try {
   assert.equal(off.color, 'rgb(18, 171, 239)');
   assert.equal(off.stroke, '0px');
   assert.equal(off.filter, 'none');
+  for (const horizontalMargin of [0, 15, 30]) {
+    settings = { ...settings, horizontalMargin };
+    await load();
+    const box = await page.evaluate(() => {
+      const stage = document.getElementById('stage')!.getBoundingClientRect();
+      const lyrics = document.getElementById('lyrics')!.getBoundingClientRect();
+      return { left: (lyrics.left - stage.left) / stage.width, right: (stage.right - lyrics.right) / stage.width };
+    });
+    assert(Math.abs(box.left - horizontalMargin / 100) < 0.001);
+    assert(Math.abs(box.right - horizontalMargin / 100) < 0.001);
+  }
   assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('[class*="_lyricDuetLine"]')!).color), 'rgb(255, 68, 170)');
   console.log('PASS: exact end cutoffs, independent background vocals, offset, backward seeking, fonts, colors, and outline off');
 } finally { await browser.close(); }

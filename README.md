@@ -15,15 +15,15 @@ Open http://127.0.0.1:3000 in Chrome or another Chromium browser. FFmpeg and ffp
 For another port, run `PORT=3210 bun run start`. Use `bun run dev` while editing source. Restarting the server interrupts any running export.
 
 1. Choose a video and a `.ttml` or `.xml` lyric file.
-2. Play or scrub the preview. Choose text and outline colors, a font preset, and outline thickness. Adjust text size, lyric area, bottom margin, background shade, and timing offset. A positive offset delays the lyrics.
+2. Play or scrub the preview. Choose text and outline colors, a font preset, and outline thickness. Adjust text size, lyric area, bottom and horizontal margins, background shade, and timing offset. A positive offset delays the lyrics.
 3. Choose resolution and frame rate, then click **Export MP4**.
 4. Wait for the export, then click **Download MP4**. You can cancel a running export.
 
-The default style is gold text with a dark outline. The separate Duet color picker defaults to light blue and applies to lines AMLL marks as duet. Background vocals follow their singer's color. Font presets are rounded bold, sans serif bold, condensed bold, and serif bold, using locally installed fonts with fallbacks. Set outline thickness to zero to turn it off. The outline scales with the text in both preview and export. An SVG filter expands the rendered line alpha after AMLL applies its word masks, avoiding clipped text strokes at word boundaries. Dimmed words still have a dimmer outline, and very thick outlines can soften fine letter details.
+The default style is rounded bold white text with a black 10% outline. Text size defaults to 5%, bottom margin to 0%, horizontal margin to 4% on each side, lyric area to 35%, background shade to 40%, and timing offset to 0 ms. The separate Duet color picker also defaults to white and applies to lines AMLL marks as duet. Background vocals follow their singer's color. Font presets are rounded bold, sans serif bold, condensed bold, and serif bold, using locally installed fonts with fallbacks. Set outline thickness to zero to turn it off. The outline scales with the text in both preview and export. An SVG filter expands the rendered line alpha after AMLL applies its word masks, avoiding clipped text strokes at word boundaries. Dimmed words still have a dimmer outline, and very thick outlines can soften fine letter details.
 
 Each line disappears immediately when its final timed word ends. Background vocals use their own final-word time. Seeking backward restores the lyrics.
 
-The default lyric box occupies the bottom 32% with room for nearby lines. Long lines can wrap. Word or syllable fill requires word or syllable timing in the source TTML. Line-timed files cannot supply missing word timing. Translation, romanization, and duet/background data are passed through AMLL. Missing Apple line IDs are added in memory for compatibility with AMLL's parser.
+The default lyric box occupies the bottom 35% with room for nearby lines. Long lines can wrap. Word or syllable fill requires word or syllable timing in the source TTML. Line-timed files cannot supply missing word timing. Translation, romanization, and duet/background data are passed through AMLL. Missing Apple line IDs are added in memory for compatibility with AMLL's parser.
 
 ## Output and limits
 

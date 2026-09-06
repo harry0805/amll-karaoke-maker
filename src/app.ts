@@ -45,11 +45,16 @@ async function main() {
       settings = readSettings();
       lyrics.configure(settings);
       for (const key of ['fontSize', 'bottom', 'height', 'shade'] as const) $(`${key}-value`).textContent = `${settings[key]}%`;
+      $('horizontalMargin-value').textContent = `${settings.horizontalMargin}% each side`;
       $('outlineWidth-value').textContent = settings.outlineWidth ? `${settings.outlineWidth}%` : 'Off';
       void lyrics.frame(video.currentTime * 1000, 0, true);
     } catch (error) { showError(String(error)); }
   }
-  for (const key of Object.keys(defaults)) input(key === 'shade' ? 'shade-control' : key).addEventListener('input', changeSettings);
+  for (const key of Object.keys(defaults) as (keyof Settings)[]) {
+    const control = input(key === 'shade' ? 'shade-control' : key);
+    control.value = String(defaults[key]);
+    control.addEventListener('input', changeSettings);
+  }
   changeSettings();
   input('video-file').addEventListener('change', () => {
     const file = input('video-file').files?.[0];

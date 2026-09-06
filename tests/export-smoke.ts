@@ -13,7 +13,7 @@ async function command(args: string[]) {
   assert.equal(code, 0, err); return out;
 }
 async function start(ttml: string, source: string) {
-  const body = new FormData(); body.set('video', Bun.file(source), 'test.mp4'); body.set('ttml', new File([ttml], 'lyrics.ttml')); body.set('settings', JSON.stringify({ ...defaults, fps: 24, shade: 0, fontSize: 7 }));
+  const body = new FormData(); body.set('video', Bun.file(source), 'test.mp4'); body.set('ttml', new File([ttml], 'lyrics.ttml')); body.set('settings', JSON.stringify({ ...defaults, textColor: '#ffd45a', duetColor: '#7dd3fc', outlineColor: '#14141c', outlineWidth: 5, bottom: 4, height: 32, fps: 24, shade: 0, fontSize: 7 }));
   const response = await fetch(`${origin}/api/jobs`, { method: 'POST', headers: { origin }, body });
   const result = await response.json() as any; assert.equal(response.status, 200, JSON.stringify(result)); return result.id as string;
 }

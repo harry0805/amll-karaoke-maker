@@ -66,6 +66,8 @@ export class Lyrics {
     const container = this.stage.querySelector<HTMLElement>('#lyrics')!;
     container.style.height = `${settings.height}%`;
     container.style.bottom = `${settings.bottom}%`;
+    container.style.left = `${settings.horizontalMargin}%`;
+    container.style.width = `${100 - 2 * settings.horizontalMargin}%`;
     this.player.getElement().style.setProperty('--amll-lp-font-size', `${settings.fontSize}cqh`);
     this.player.getElement().style.setProperty('--amll-lp-color', settings.textColor);
     this.player.getElement().style.setProperty('--duet-color', settings.duetColor);

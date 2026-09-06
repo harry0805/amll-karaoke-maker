@@ -36,12 +36,16 @@ async function main() {
   const showError = (message = '') => { $('error').textContent = message; $('error').hidden = !message; };
   const updateExport = () => { $<HTMLButtonElement>('export').disabled = !videoFile || !ttmlFile || !loaded || exporting; };
   const formatTime = (n: number) => `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, '0')}`;
-  const readSettings = () => validateSettings(Object.fromEntries(Object.keys(defaults).map(key => [key, Number(input(key === 'shade' ? 'shade-control' : key).value)])));
+  const readSettings = () => validateSettings(Object.fromEntries(Object.keys(defaults).map(key => {
+    const value = input(key === 'shade' ? 'shade-control' : key).value;
+    return [key, ['textColor', 'duetColor', 'font', 'outlineColor'].includes(key) ? value : Number(value)];
+  })));
   function changeSettings() {
     try {
       settings = readSettings();
       lyrics.configure(settings);
       for (const key of ['fontSize', 'bottom', 'height', 'shade'] as const) $(`${key}-value`).textContent = `${settings[key]}%`;
+      $('outlineWidth-value').textContent = settings.outlineWidth ? `${settings.outlineWidth}%` : 'Off';
       void lyrics.frame(video.currentTime * 1000, 0, true);
     } catch (error) { showError(String(error)); }
   }

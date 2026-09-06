@@ -1,0 +1,82 @@
+diff --git a/dist/amll-core.cjs b/dist/amll-core.cjs
+index 819b12c2307970f3b2dc160b47c90bc9a560887d..2c2efccdea59fb1026fe1d905ddc3419e724c5b9 100644
+--- a/dist/amll-core.cjs
++++ b/dist/amll-core.cjs
+@@ -1,3 +1,27 @@
++// Defer layout writes until after ResizeObserver notification delivery.
++function createDeferredLyricResizeObserver(callback) {
++  const pending = new Map();
++  let frame = 0;
++  const observer = new ResizeObserver((entries) => {
++    for (const entry of entries) pending.set(entry.target, entry);
++    if (!frame) frame = requestAnimationFrame(() => {
++      frame = 0;
++      const batch = Array.from(pending.values());
++      pending.clear();
++      if (batch.length) callback(batch, observer);
++    });
++  });
++  const unobserve = observer.unobserve.bind(observer);
++  observer.unobserve = (target) => { pending.delete(target); unobserve(target); };
++  const disconnect = observer.disconnect.bind(observer);
++  observer.disconnect = () => {
++    if (frame) cancelAnimationFrame(frame);
++    frame = 0;
++    pending.clear();
++    disconnect();
++  };
++  return observer;
++}
+ Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+ //#region \0rolldown/runtime.js
+ var __create = Object.create;
+@@ -2732,7 +2756,7 @@ var LyricPlayerBase = class extends EventTarget {
+ 	};
+ 	scrolledHandler;
+ 	/** @internal */
+-	resizeObserver = new ResizeObserver(((entries) => {
++	resizeObserver = createDeferredLyricResizeObserver(((entries) => {
+ 		let shouldRelayout = false;
+ 		let shouldRebuildPlayerStyle = false;
+ 		for (const entry of entries) if (entry.target === this.element) {
+diff --git a/dist/amll-core.mjs b/dist/amll-core.mjs
+index 37bd9873e58044f0900c04c2ab80da5a6d29f16a..eaf0343c3a44e88f5ea26be3bcf28dc780863076 100644
+--- a/dist/amll-core.mjs
++++ b/dist/amll-core.mjs
+@@ -1,3 +1,27 @@
++// Defer layout writes until after ResizeObserver notification delivery.
++function createDeferredLyricResizeObserver(callback) {
++  const pending = new Map();
++  let frame = 0;
++  const observer = new ResizeObserver((entries) => {
++    for (const entry of entries) pending.set(entry.target, entry);
++    if (!frame) frame = requestAnimationFrame(() => {
++      frame = 0;
++      const batch = Array.from(pending.values());
++      pending.clear();
++      if (batch.length) callback(batch, observer);
++    });
++  });
++  const unobserve = observer.unobserve.bind(observer);
++  observer.unobserve = (target) => { pending.delete(target); unobserve(target); };
++  const disconnect = observer.disconnect.bind(observer);
++  observer.disconnect = () => {
++    if (frame) cancelAnimationFrame(frame);
++    frame = 0;
++    pending.clear();
++    disconnect();
++  };
++  return observer;
++}
+ import { Mat4, Vec2, Vec3, Vec4 } from "gl-matrix";
+ import { Application } from "@pixi/app";
+ import { Texture } from "@pixi/core";
+@@ -2707,7 +2731,7 @@ var LyricPlayerBase = class extends EventTarget {
+ 	};
+ 	scrolledHandler;
+ 	/** @internal */
+-	resizeObserver = new ResizeObserver(((entries) => {
++	resizeObserver = createDeferredLyricResizeObserver(((entries) => {
+ 		let shouldRelayout = false;
+ 		let shouldRebuildPlayerStyle = false;
+ 		for (const entry of entries) if (entry.target === this.element) {

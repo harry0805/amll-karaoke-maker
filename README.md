@@ -54,3 +54,7 @@ The smoke test generates an original four-second test video and checks HTTP uplo
 - `src/exporter.ts`: video probing, Chromium capture, FFmpeg composition.
 
 AMLL packages are licensed AGPL-3.0-only. See the installed packages' LICENSE files and [AMLL repository](https://github.com/amll-dev/applemusic-like-lyrics) before distributing this app.
+
+AMLL 0.5.2 has a local Bun patch in `patches/` that batches its lyric resize callbacks into the next animation frame. This prevents layout writes during ResizeObserver delivery, which can otherwise produce a browser error popup during seeking or resizing. `bun install` reapplies the patch. Recheck it when upgrading AMLL. The app's outline resize callback also defers its writes.
+
+Run `bun run tests/resize-smoke.ts` with the local server on port 3210 to stress repeated seeks and lyric size changes while checking for window errors.

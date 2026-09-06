@@ -17,6 +17,9 @@
       },
     },
   },
+  "patchedDependencies": {
+    "@applemusic-like-lyrics/core@0.5.2": "patches/@applemusic-like-lyrics%2Fcore@0.5.2.patch",
+  },
   "packages": {
     "@applemusic-like-lyrics/core": ["@applemusic-like-lyrics/core@0.5.2", "", { "dependencies": { "@ungap/structured-clone": "^1.3.0", "bezier-easing": "^3.0.0", "deep-freeze": "^0.0.1", "gl-matrix": "4.0.0-beta.2" }, "peerDependencies": { "@pixi/app": "*", "@pixi/core": "*", "@pixi/display": "*", "@pixi/filter-blur": "*", "@pixi/filter-bulge-pinch": "*", "@pixi/filter-color-matrix": "*", "@pixi/sprite": "*" } }, "sha512-RlFwDlOzT7gzHo/dbrG9noO1Q51bHLDrG1vIgtsf9x7+SNmRXww9pkNubLrDyrHSEiMDgtjEvoG824bYbTAVIQ=="],
 

@@ -49,7 +49,13 @@ export class Lyrics {
     this.outlineDilate = svg.querySelector('feMorphology')!;
     this.outlineFlood = svg.querySelector('feFlood')!;
     stage.append(svg);
-    new ResizeObserver(() => this.updateOutline()).observe(stage);
+    let outlineFrame = 0;
+    new ResizeObserver(() => {
+      if (!outlineFrame) outlineFrame = requestAnimationFrame(() => {
+        outlineFrame = 0;
+        this.updateOutline();
+      });
+    }).observe(stage);
     container.append(this.player.getElement());
     this.player.setEnableBlur(false);
     this.player.setAlignPosition(0.5);

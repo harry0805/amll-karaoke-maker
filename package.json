@@ -7,6 +7,19 @@
     "@types/bun": "latest"
   },
   "peerDependencies": {
-    "typescript": "^7"
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@applemusic-like-lyrics/core": "^0.5.2",
+    "@applemusic-like-lyrics/ttml": "^1.0.1",
+    "playwright": "^1.63.0"
+  },
+  "scripts": {
+    "dev": "bun --hot index.ts",
+    "start": "bun index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "setup:browser": "playwright install chromium",
+    "build": "bun build ./src/index.html --outdir dist --target browser --minify"
   }
 }

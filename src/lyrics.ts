@@ -2,6 +2,8 @@ import { DomLyricPlayer, type LyricLine } from '@applemusic-like-lyrics/core';
 import { parseTTML } from '@applemusic-like-lyrics/ttml';
 import { fonts, type Settings } from './settings';
 
+const LINE_FADE_MS = 250;
+
 export function parseLyrics(text: string): LyricLine[] {
   const xml = new DOMParser().parseFromString(text, 'application/xml');
   if (xml.querySelector('parsererror') || xml.documentElement.localName !== 'tt') throw new Error('This is not a valid TTML document.');
@@ -138,9 +140,13 @@ export class Lyrics {
         if (!line) continue;
         const end = this.lineEnds.get(line) ?? line.getLine().endTime;
         const element = (line as typeof line & { getElement(): HTMLElement }).getElement();
-        // Explicit visibility wins over AMLL's lingering group opacity and is
-        // reversible when seeking backward. Do not remove the layout space.
-        element.style.visibility = time < end ? 'visible' : 'hidden';
+        // Use media time, not a CSS transition or wall clock, so seeking and
+        // offline exports produce the same fade without delaying scrolling.
+        const progress = Math.min(1, Math.max(0, (time - end) / LINE_FADE_MS));
+        const opacity = 1 - progress * progress * (3 - 2 * progress);
+        const baseFilter = element.style.filter.replace(/\s*opacity\([^)]*\)/g, '');
+        element.style.filter = `${baseFilter} opacity(${opacity})`;
+        element.style.visibility = progress < 1 ? 'visible' : 'hidden';
       }
     });
     // AMLL uses Web Animations for word fills. Freeze them at the media time,

@@ -35,6 +35,7 @@ try {
   const sourceInfo = JSON.parse(await command(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=nb_frames', '-of', 'json', source]));
   const expectedFrames = Number(sourceInfo.streams[0].nb_frames);
   const text = (await Bun.file(new URL('../examples/demo.ttml', import.meta.url)).text())
+    .replaceAll('00:00:03.800', '00:00:03.500')
     .replace('<p begin="00:00:01.900"', '<p ttm:agent="v2" begin="00:00:01.900"');
   const id = await start(text, source);
   const job = await wait(id);

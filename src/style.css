@@ -18,7 +18,8 @@
 }
 /* Outline the composed line, outside AMLL's individual word masks. */
 .amll-lyric-player [class*="_lyricMainLine"],
-.amll-lyric-player [class*="_lyricSubLine"] {
+.amll-lyric-player [class*="_lyricSubLine"],
+.amll-lyric-player [class*="_interludeDots"] {
   filter: var(--lyric-outline-filter, none);
 }
 /* Word masks need room for descenders and floating glyphs even in compact rows. */

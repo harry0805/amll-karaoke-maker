@@ -26,11 +26,15 @@ try {
   assert.deepEqual(colors, ['rgb(255, 212, 90)', 'rgb(255, 212, 90)', 'rgb(125, 211, 252)'], 'Only duet lines should use the duet color');
   assert((await visibleAt(2299)).includes('Golden words'));
   const atEnd = await visibleAt(2300);
-  assert(!atEnd.includes('Golden words'), 'Main line must disappear at its last word, despite longer background vocals');
+  assert(atEnd.includes('Golden words'), 'Fade should begin without an instant cut');
   assert(atEnd.includes('Echo'), 'Background vocal must retain its own timing');
-  assert(!(await visibleAt(3500)).includes('Echo'), 'Background vocal must disappear at its own end');
+  await visibleAt(2425);
+  const halfway = await page.evaluate(() => document.querySelector('[class*="_lyricMainLine"]')!.parentElement!.style.filter);
+  assert(halfway.includes('opacity(0.5)'), 'Line should be halfway faded after 125 ms');
+  assert(!(await visibleAt(2550)).includes('Golden words'), 'Main fade should finish independently of background vocals');
+  assert(!(await visibleAt(3750)).includes('Echo'), 'Background vocal should finish its own fade');
   assert((await visibleAt(1000)).includes('Golden words'), 'Seeking backward must restore the line');
-  assert.deepEqual(await visibleAt(4500), [], 'Nothing should linger after the last line');
+  assert.deepEqual(await visibleAt(4750), [], 'Nothing should linger after the last fade');
   await visibleAt(1600);
   await page.screenshot({ path: '/tmp/karaoke-style-check.png', omitBackground: true });
   for (const font of Object.keys(fonts) as (keyof typeof fonts)[]) {

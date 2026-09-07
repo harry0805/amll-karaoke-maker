@@ -1,5 +1,5 @@
 {
-  "name": "karaoke-amll-renderer",
+  "name": "amll-karaoke-maker",
   "module": "index.ts",
   "type": "module",
   "private": true,

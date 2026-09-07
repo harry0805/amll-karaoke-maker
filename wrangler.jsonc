@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "karaoke-amll-renderer",
+  "name": "amll-karaoke-maker",
   "compatibility_date": "2026-09-07",
   "workers_dev": true,
   "build": {

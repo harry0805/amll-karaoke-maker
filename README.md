@@ -1,4 +1,4 @@
-# Karaoke studio
+# Karaoke Maker
 
 A browser app that combines a music video and TTML lyrics into an MP4. Files never upload. AMLL renders the lyrics, browser snapshots composite them over decoded video frames, and Mediabunny uses WebCodecs to encode the result.
 
@@ -28,7 +28,7 @@ bunx wrangler login
 bun run deploy
 ```
 
-Login opens your browser to authorize Cloudflare access. Deployment runs the build automatically and uploads only `dist/`. Wrangler prints the HTTPS address under `karaoke-amll-renderer.<your-subdomain>.workers.dev`. Change `name` in `wrangler.jsonc` to use a different Worker name.
+Login opens your browser to authorize Cloudflare access. Deployment runs the build automatically and uploads only `dist/`. Wrangler prints the HTTPS address under `amll-karaoke-maker.<your-subdomain>.workers.dev`. Change `name` in `wrangler.jsonc` to use a different Worker name.
 
 This is an assets-only Worker with no Worker script or backend bindings. Video processing and saved exports stay in the browser. Cloudflare currently provides free, unlimited static asset requests with no asset storage charge. See [static asset billing and limits](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/).
 

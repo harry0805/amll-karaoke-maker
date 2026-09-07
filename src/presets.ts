@@ -16,11 +16,11 @@ export function serializePresets(presets: Pick<Preset, 'name' | 'settings'>[]): 
 export function parsePresets(text: string): Preset[] {
   if (text.length > 1024 * 1024) throw new Error('Preset files must be smaller than 1 MB.');
   let data: unknown;
-  try { data = JSON.parse(text); } catch { throw new Error('This file is not valid JSON. Choose a preset exported from Karaoke studio.'); }
-  if (!data || typeof data !== 'object') throw new Error('Choose a Karaoke studio preset file.');
+  try { data = JSON.parse(text); } catch { throw new Error('This file is not valid JSON. Choose a preset exported from Karaoke Maker.'); }
+  if (!data || typeof data !== 'object') throw new Error('Choose a Karaoke Maker preset file.');
   const document = data as { format?: unknown; version?: unknown; presets?: unknown };
 
-  if (document.format !== FORMAT || document.version !== 1 || !Array.isArray(document.presets) || !document.presets.length || document.presets.length > MAX_PRESETS) throw new Error('Choose a version 1 Karaoke studio preset file containing 1 to 100 presets.');
+  if (document.format !== FORMAT || document.version !== 1 || !Array.isArray(document.presets) || !document.presets.length || document.presets.length > MAX_PRESETS) throw new Error('Choose a version 1 Karaoke Maker preset file containing 1 to 100 presets.');
   return document.presets.map((entry: unknown) => {
     if (!entry || typeof entry !== 'object') throw new Error('Each preset needs a name and settings.');
     const preset = entry as { name?: unknown; settings?: unknown };

@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "karaoke-amll-renderer",
+      "name": "amll-karaoke-maker",
       "dependencies": {
         "@applemusic-like-lyrics/core": "^0.5.2",
         "@applemusic-like-lyrics/ttml": "^1.0.1",

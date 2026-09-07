@@ -9,7 +9,7 @@ async function database(): Promise<IDBDatabase> {
     request.onupgradeneeded = () => request.result.createObjectStore(STORE);
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
-    request.onblocked = () => reject(new Error('Close other Karaoke studio tabs and try again.'));
+    request.onblocked = () => reject(new Error('Close other Karaoke Maker tabs and try again.'));
   });
 }
 export async function readCustomFont(): Promise<File | undefined> {

@@ -14,4 +14,4 @@ const server = Bun.serve({
     return new Response('Not found', { status: 404 }); },
   development: { hmr: true, console: true },
 });
-console.log(`Karaoke studio: ${server.url}`);
+console.log(`Karaoke Maker: ${server.url}`);

@@ -87,6 +87,6 @@ test('selected preset labels reflect changes and revert when settings match', ()
 });
 
 test('malformed JSON imports have an actionable error', () => {
-  expect(() => parsePresets('{broken')).toThrow('This file is not valid JSON. Choose a preset exported from Karaoke studio.');
-  expect(() => parsePresets('null')).toThrow('Choose a Karaoke studio preset file.');
+  expect(() => parsePresets('{broken')).toThrow('This file is not valid JSON. Choose a preset exported from Karaoke Maker.');
+  expect(() => parsePresets('null')).toThrow('Choose a Karaoke Maker preset file.');
 });

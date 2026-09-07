@@ -37,6 +37,9 @@ export class Lyrics {
   private outlineId = `lyric-outline-${crypto.randomUUID()}`;
   private outlineDilate: SVGFEMorphologyElement;
   private outlineFlood: SVGFEFloodElement;
+  private outlineSVG: SVGSVGElement;
+  private resizeObserver: ResizeObserver;
+  private outlineFrame = 0;
   constructor(private stage: HTMLElement, container: HTMLElement, settings: Settings) {
     this.settings = settings;
     // Apply the outline after the words have been masked and animated. A text
@@ -51,13 +54,14 @@ export class Lyrics {
     this.outlineDilate = svg.querySelector('feMorphology')!;
     this.outlineFlood = svg.querySelector('feFlood')!;
     stage.append(svg);
-    let outlineFrame = 0;
-    new ResizeObserver(() => {
-      if (!outlineFrame) outlineFrame = requestAnimationFrame(() => {
-        outlineFrame = 0;
+    this.outlineSVG = svg;
+    this.resizeObserver = new ResizeObserver(() => {
+      if (!this.outlineFrame) this.outlineFrame = requestAnimationFrame(() => {
+        this.outlineFrame = 0;
         this.updateOutline();
       });
-    }).observe(stage);
+    });
+    this.resizeObserver.observe(stage);
     container.append(this.player.getElement());
     this.player.setEnableBlur(false);
     // Leave a small inset for the edge fade and word movement, with upcoming
@@ -69,6 +73,12 @@ export class Lyrics {
     this.player.setEnableScale(true);
     this.player.resume();
     this.configure(settings);
+  }
+  dispose() {
+    this.resizeObserver.disconnect();
+    cancelAnimationFrame(this.outlineFrame);
+    this.player.dispose();
+    this.outlineSVG.remove();
   }
   configure(settings: Settings) {
     const fontChanged = this.settings.font !== settings.font;

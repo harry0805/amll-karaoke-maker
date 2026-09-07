@@ -7,7 +7,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 810 }, deviceScaleFactor: 1 });
   const ttml = process.env.TTML_PATH ? await Bun.file(process.env.TTML_PATH).text() : `<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="0s" end="4s"><span begin="0s" end="1s">Out</span><span begin="1s" end="2s">lined </span><span begin="2s" end="4s">letters</span></p></div></body></tt>`;
   const settings = { ...defaults, textColor: '#ffffff', fontSize: 4, outlineColor: '#111111', outlineWidth: 10, shade: 0 };
-  await page.route('**/api/jobs/outline-test/config', route => route.fulfill({ json: { ttml, settings } }));
+  await page.route('**/test-config/outline-test/config', route => route.fulfill({ json: { ttml, settings } }));
   await page.goto(`${process.argv[2] || 'http://127.0.0.1:3210'}/render?job=outline-test`);
   await page.waitForFunction(() => window.rendererReady || window.rendererError);
   assert.equal(await page.evaluate(() => window.rendererError), undefined);

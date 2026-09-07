@@ -9,7 +9,7 @@ try {
     <p begin="0s" end="5s"><span begin="0s" end="5s">Long second line</span></p>
     <p begin="5s" end="7s"><span begin="5s" end="7s">Upcoming third line</span></p>
   </div></body></tt>`;
-  await page.route('**/api/jobs/overlap-test/config', route => route.fulfill({ json: { ttml, settings: { ...defaults, height: 20 } } }));
+  await page.route('**/test-config/overlap-test/config', route => route.fulfill({ json: { ttml, settings: { ...defaults, height: 20 } } }));
   await page.goto(`${process.argv[2] || 'http://127.0.0.1:3210'}/render?job=overlap-test`);
   await page.waitForFunction(() => window.rendererReady || window.rendererError);
   assert.equal(await page.evaluate(() => window.rendererError), undefined);

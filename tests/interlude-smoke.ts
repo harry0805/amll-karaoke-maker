@@ -6,7 +6,7 @@ try {
   const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
   let settings = { ...defaults, outlineColor: '#ff4488', outlineWidth: 10, height: 20 };
   const ttml = '<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="12s" end="14s"><span begin="12s" end="14s">First line</span></p><p begin="30s" end="32s"><span begin="30s" end="32s">Next line</span></p></div></body></tt>';
-  await page.route('**/api/jobs/interlude-test/config', route => route.fulfill({ json: { ttml, settings } }));
+  await page.route('**/test-config/interlude-test/config', route => route.fulfill({ json: { ttml, settings } }));
   async function load() {
     await page.goto(`${process.argv[2] || 'http://127.0.0.1:3210'}/render?job=interlude-test`);
     await page.waitForFunction(() => window.rendererReady || window.rendererError);

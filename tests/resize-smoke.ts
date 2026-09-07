@@ -13,7 +13,7 @@ try {
     });
   });
   const ttml = `<tt xmlns="http://www.w3.org/ns/ttml"><body><div>${Array.from({ length: 40 }, (_, i) => `<p begin="${i * 2}s" end="${i * 2 + 2}s"><span begin="${i * 2}s" end="${i * 2 + 1}s">A longer line with words that wrap </span><span begin="${i * 2 + 1}s" end="${i * 2 + 2}s">when the lyric area changes size</span></p>`).join('')}</div></body></tt>`;
-  await page.route('**/api/jobs/resize-test/config', route => route.fulfill({ json: { ttml, settings: defaults } }));
+  await page.route('**/test-config/resize-test/config', route => route.fulfill({ json: { ttml, settings: defaults } }));
   await page.goto(`${process.argv[2] || 'http://127.0.0.1:3210'}/render?job=resize-test`);
   await page.waitForFunction(() => window.rendererReady || window.rendererError);
   assert.equal(await page.evaluate(() => window.rendererError), undefined);

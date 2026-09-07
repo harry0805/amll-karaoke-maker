@@ -5,7 +5,7 @@ const browser = await chromium.launch();
 try {
   const page = await browser.newPage({ viewport: { width: 960, height: 540 }, deviceScaleFactor: 1 });
   const ttml = '<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="0s" end="3s"><span begin="0s" end="0.6s">gypqj </span><span begin="0.6s" end="1.2s">Resting </span><span begin="1.2s" end="1.8s">by </span><span begin="1.8s" end="3s">the waves</span></p><p begin="3s" end="6s"><span begin="3s" end="6s">Upcoming glyphs</span></p></div></body></tt>';
-  await page.route('**/api/jobs/glyph-test/config', route => route.fulfill({ json: { ttml, settings: { ...defaults, fontSize: 7, lineSpacing: 0.75, height: 50 } } }));
+  await page.route('**/test-config/glyph-test/config', route => route.fulfill({ json: { ttml, settings: { ...defaults, fontSize: 7, lineSpacing: 0.75, height: 50 } } }));
   await page.goto(`${process.argv[2] || 'http://127.0.0.1:3210'}/render?job=glyph-test`);
   await page.waitForFunction(() => window.rendererReady || window.rendererError);
   assert.equal(await page.evaluate(() => window.rendererError), undefined);

@@ -1,28 +1,13 @@
+import { exportVideo } from './browser-export';
+import { listStoredExports, deleteStoredExport } from './export-storage';
 import { Lyrics } from './lyrics';
 import { defaults, validateSettings, type Settings } from './settings';
 
-declare global {
-  interface Window { rendererReady: boolean; rendererError?: string; renderFrame: (time: number, delta: number) => Promise<void> }
-}
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const input = (id: string) => $<HTMLInputElement>(id);
 const stage = $('stage');
 
 async function main() {
-  if (location.pathname === '/render') {
-    document.body.className = 'render';
-    document.body.replaceChildren(stage);
-    try {
-      const res = await fetch(`/api/jobs/${new URLSearchParams(location.search).get('job')}/config`);
-      if (!res.ok) throw new Error('Cannot load export.');
-      const config = await res.json();
-      const lyrics = new Lyrics(stage, $('lyrics'), validateSettings(config.settings));
-      await lyrics.load(config.ttml);
-      window.renderFrame = (time, delta) => lyrics.frame(time, delta);
-      window.rendererReady = true;
-    } catch (error) { window.rendererError = String(error); }
-    return;
-  }
   let settings: Settings = { ...defaults };
   const lyrics = new Lyrics(stage, $('lyrics'), settings);
   const video = $<HTMLVideoElement>('video');
@@ -31,9 +16,32 @@ async function main() {
   let objectURL = '';
   let loaded = false;
   let exporting = false;
-  let jobId: string | undefined;
+  let exportController: AbortController | undefined;
+  const downloadURLs: string[] = [];
+  const exportPreview = $<HTMLCanvasElement>("export-preview");
   let lyricGeneration = 0;
   const showError = (message = '') => { $('error').textContent = message; $('error').hidden = !message; };
+  async function refreshSavedExports() {
+    const exports = await listStoredExports();
+    for (const url of downloadURLs) URL.revokeObjectURL(url);
+    downloadURLs.length = 0;
+    const list = $('saved-exports'); list.replaceChildren();
+    for (const item of exports) {
+      const row = document.createElement('div'); row.className = 'saved-export';
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(item.file); downloadURLs.push(link.href);
+      link.download = item.name; link.textContent = `${item.name} · ${(item.file.size / 1024 ** 2).toFixed(1)} MB`;
+      const remove = document.createElement('button');
+      remove.textContent = 'Delete'; remove.setAttribute('aria-label', `Delete saved export ${item.name}`);
+      remove.addEventListener('click', async () => {
+        remove.disabled = true;
+        try { await deleteStoredExport(item.id); await refreshSavedExports(); }
+        catch (error) { showError(String(error)); remove.disabled = false; }
+      });
+      row.append(link, remove); list.append(row);
+    }
+    $('saved-area').hidden = !exports.length;
+  }
   const updateExport = () => { $<HTMLButtonElement>('export').disabled = !videoFile || !ttmlFile || !loaded || exporting; };
   const formatTime = (n: number) => `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, '0')}`;
   const readSettings = () => validateSettings(Object.fromEntries(Object.keys(defaults).map(key => {
@@ -99,52 +107,59 @@ async function main() {
   video.addEventListener('seeked', () => { void lyrics.frame(video.currentTime * 1000, 0, true); });
   let previous = performance.now();
   async function tick(now: number) {
-    await lyrics.frame(video.currentTime * 1000, video.paused ? 0 : now - previous);
+    if (!exporting) await lyrics.frame(video.currentTime * 1000, video.paused ? 0 : now - previous);
     previous = now;
-    if (loaded) { input('seek').value = String(video.currentTime); $('time').textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`; }
+    if (loaded && !exporting) { input('seek').value = String(video.currentTime); $('time').textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`; }
     requestAnimationFrame(tick);
   }
   requestAnimationFrame(tick);
   const setBusy = (busy: boolean) => {
     exporting = busy;
     document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('aside input, aside select').forEach(el => { el.disabled = busy; });
-    $('cancel').hidden = !busy; updateExport();
+    $('cancel').hidden = !busy;
+    input('seek').disabled = busy || !loaded;
+    $<HTMLButtonElement>('play').disabled = busy || !loaded;
+    updateExport();
   };
-  async function poll() {
-    if (!jobId) return;
-    try {
-      const res = await fetch(`/api/jobs/${jobId}`);
-      if (!res.ok) throw new Error('Cannot read export status. Keep the Bun server running.');
-      const job = await res.json();
-      $<HTMLProgressElement>('progress').value = job.progress;
-      $('status').textContent = job.status === 'rendering' ? `Rendering ${Math.round(job.progress * 100)}% · ${job.frames}/${job.totalFrames} frames` : ({ queued: 'Queued', preparing: 'Preparing lyrics…', encoding: 'Finishing MP4…', done: 'Export complete', cancelled: 'Export cancelled', error: 'Export failed' }[job.status as string] || job.status);
-      if (['done', 'error', 'cancelled'].includes(job.status)) {
-        if (job.status === 'done') { const link = $<HTMLAnchorElement>('download'); link.href = `/api/jobs/${jobId}/download`; link.hidden = false; }
-        if (job.status === 'error') showError(job.error || 'Export failed.');
-        setBusy(false); localStorage.removeItem('karaoke-job'); jobId = undefined;
-      } else setTimeout(poll, 800);
-    } catch (error) { showError(String(error)); setTimeout(poll, 3000); }
-  }
   $('export').addEventListener('click', async () => {
-    if (!videoFile || !ttmlFile) return;
-    showError(); $('download').hidden = true;
+    if (!videoFile || !ttmlFile || exporting) return;
+    showError();
+    exportController = new AbortController();
     try {
       settings = readSettings(); setBusy(true); video.pause();
-      $('progress-area').hidden = false; $('status').textContent = 'Loading source video…';
+      $('progress-area').hidden = false; $('status').textContent = 'Preparing browser export…';
       $<HTMLProgressElement>('progress').value = 0;
-      const body = new FormData(); body.set('video', videoFile); body.set('ttml', ttmlFile); body.set('settings', JSON.stringify(settings));
-      const res = await fetch('/api/jobs', { method: 'POST', body });
-      const data = await res.json(); if (!res.ok) throw new Error(data.error || 'Could not start export.');
-      jobId = data.id; localStorage.setItem('karaoke-job', jobId!); void poll();
-    } catch (error) { setBusy(false); showError(String(error)); $('status').textContent = 'Export failed'; }
+      await exportVideo({
+        video: videoFile, ttml: await ttmlFile.text(), settings,
+        name: videoFile.name.replace(/\.[^.]+$/, '') + '-karaoke.mp4',
+        preview: exportPreview, signal: exportController.signal,
+        onProgress: ({ frames, time, duration, finishing }) => {
+          exportPreview.hidden = false;
+          $<HTMLProgressElement>('progress').value = Math.min(.99, time / duration);
+          $('status').textContent = finishing ? 'Finishing MP4…' : 'Rendering ' + Math.round(time / duration * 100) + '% · ' + frames + ' frames';
+          input('seek').value = String(time);
+          $('time').textContent = formatTime(time) + ' / ' + formatTime(duration);
+        },
+      });
+      await refreshSavedExports();
+      $<HTMLProgressElement>('progress').value = 1;
+      $('status').textContent = 'Export saved on this device';
+    } catch (error) {
+      if (exportController.signal.aborted) $('status').textContent = 'Export cancelled';
+      else { showError(String(error)); $('status').textContent = 'Export failed'; }
+    } finally {
+      exportController = undefined; exportPreview.hidden = true;
+      exportPreview.width = exportPreview.height = 0;
+      setBusy(false); await lyrics.frame(video.currentTime * 1000, 0, true);
+    }
   });
-  $('cancel').addEventListener('click', async () => {
-    if (!jobId) return;
-    try { const response = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' }); if (!response.ok) throw new Error('Could not cancel export.'); $('status').textContent = 'Cancelling…'; } catch (error) { showError(String(error)); }
+  $('cancel').addEventListener('click', () => {
+    exportController?.abort(); $('status').textContent = 'Cancelling…';
   });
-  const pending = localStorage.getItem('karaoke-job');
-  if (pending) { const response = await fetch(`/api/jobs/${pending}`); if (response.ok) { jobId = pending; setBusy(true); $('progress-area').hidden = false; void poll(); } else localStorage.removeItem('karaoke-job'); }
-  const health = await fetch('/api/health').then(res => res.json());
-  if (!health.ffmpeg || !health.ffprobe) showError('FFmpeg is missing. Install it before exporting. See README for setup.');
+  window.addEventListener('beforeunload', event => {
+    if (exporting) { event.preventDefault(); event.returnValue = ''; }
+  });
+  // OPFS failures are reported here and on export, never replaced with RAM storage.
+  void refreshSavedExports().catch(error => showError(String(error)));
 }
 void main().catch(error => { console.error(error); const el = document.getElementById('error'); if (el) { el.textContent = String(error); el.hidden = false; } });

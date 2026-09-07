@@ -1,23 +1,29 @@
 # Karaoke studio
 
-A local Bun app that combines a music video and TTML lyrics into an MP4. AMLL renders the word fills and line movement. Chromium captures transparent lyric frames at the chosen frame rate, and FFmpeg composites them over the source video and preserves its audio as AAC.
+A browser app that combines a music video and TTML lyrics into an MP4. Files never upload. AMLL renders the lyrics, browser snapshots composite them over decoded video frames, and Mediabunny uses WebCodecs to encode the result.
 
-## Run
+## Run and publish
 
 ```sh
 bun install
-bun run setup:browser
-bun run start
+bun run dev
 ```
 
-Open http://127.0.0.1:3000 in Chrome or another Chromium browser. FFmpeg and ffprobe must be on your PATH. On macOS, install them with `brew install ffmpeg` if needed. They are already installed on the machine used to build this project.
+Open http://127.0.0.1:3000. For another port, use `PORT=3210 bun run dev`.
+Bun serves the development files only. There is no export backend, FFmpeg installation, or separate Chromium process needed to use the app.
 
-For another port, run `PORT=3210 bun run start`. Use `bun run dev` while editing source. Restarting the server interrupts any running export.
+```sh
+bun run build
+```
 
-1. Choose a video and a `.ttml` or `.xml` lyric file.
-2. Play or scrub the preview. Choose text and outline colors, a font preset, and outline thickness. Adjust text size, lyric area, bottom and horizontal margins, background shade, and timing offset. A positive offset delays the lyrics.
-3. Click **Export MP4**. Resolution and frame rate come from the source.
-4. Wait for the export, then click **Download MP4**. You can cancel a running export.
+Publish the contents of `dist/` to any static HTTPS host. No Bun runtime, upload endpoint, cross-origin isolation, or server configuration is required. HTTPS or localhost is needed for WebCodecs. This is browser-local processing, not a standalone file:// app or an installed offline PWA.
+
+1. Choose a video and a TTML file.
+2. Preview the lyrics and adjust their style and placement.
+3. Click Export MP4. The preview displays the actual composite frames sent to the encoder.
+4. Download the MP4 from Saved exports. Completed files remain on this device until you delete them there. Cancel stops the export and removes its partial file.
+
+Keep the tab open and visible during export. Settings and playback controls are locked until export finishes or is cancelled. The original preview position returns afterward. Reloading interrupts a running export. Completed exports reappear after reload; interrupted files are cleaned up when the app next opens.
 
 The default style is rounded bold white text with a black 10% outline. Text size defaults to 5%, bottom margin to 0%, horizontal margin to 4% on each side, lyric area to 35%, background shade to 40%, and timing offset to 0 ms. The separate Duet color picker also defaults to white and applies to lines AMLL marks as duet. Background vocals follow their singer's color. Font presets are rounded bold, sans serif bold, condensed bold, and serif bold, using locally installed fonts with fallbacks. Set outline thickness to zero to turn it off. The outline scales with the text in both preview and export. An SVG filter expands the rendered line alpha after AMLL applies its word masks, avoiding clipped text strokes at word boundaries. Dimmed words still have a dimmer outline, and very thick outlines can soften fine letter details.
 
@@ -27,31 +33,43 @@ The default lyric box occupies the bottom 35% with room for nearby lines. Long l
 
 ## Output and limits
 
-- H.264 MP4 with AAC audio at the source frame rate, including fractional rates such as 30000/1001. Videos without audio also work. Variable-frame-rate sources export at their average frame rate.
-- Source display dimensions are retained, with rotation and pixel aspect ratio applied. Dimensions round to even numbers required by H.264.
-- Files stay on this computer. The server listens on loopback only. The source is temporarily copied into `.renders/<job-id>/` and removed after export. Finished MP4 files remain there until you delete them. Downloads are available while the server stays running.
-- The preview needs a browser-supported video codec. H.264 MP4 is the safest input. HDR is not explicitly tone-mapped; use an SDR source for predictable colors. Only the first video and audio tracks are exported.
-- Export runs frame by frame, so a long video or 4K/60 fps can take substantially longer than playback. Frames stream directly to FFmpeg rather than collecting image files on disk. One export runs at a time. The upload limit is 20 GiB and TTML is limited to 10 MiB.
-- The preview and export use the same lyric renderer. Font availability and browser differences can affect typography. A transparent-overlay-only export is not included; the current output is the finished video.
+- H.264 MP4 with the original AAC audio packets copied at their original timestamps. Non-presented AAC priming packets before time zero are excluded. Silent video stays silent. This first browser version requires AAC audio; other audio codecs get an explicit error before export. Audio transcoding is deferred because the browser encoder added padding in testing.
+- Source frame timestamps are retained, including fractional and variable frame rates. Source display dimensions account for rotation and pixel aspect ratio and round up to even pixels for H.264.
+- Uses the primary video and audio tracks. H.264/AAC MP4 is the safest input. HDR is not explicitly tone-mapped; use SDR for predictable colors.
+- Browser codec support varies. Recent Chrome, Edge, or Safari with WebCodecs is required, but individual source codecs and encoder configurations may still be unsupported. Chromium is covered by the automated export tests.
+- Encoded media streams to OPFS using a 1 MiB write buffer and awaited disk writes. Regular MP4 metadata goes at the end; in-memory fast start is disabled. Downloads use the disk-backed File directly, without constructing a whole-file ArrayBuffer or Blob.
+- The selected source File stays on its original disk and uses an 8 MiB read cache. Audio copying runs at most one second ahead of the current video frame. Decoders, encoders, current canvas frames, lyric snapshots, and MP4 sample metadata still need working memory. No raw-frame image sequence or full audio copy is collected.
+- Saved files live under the site's OPFS directory `karaoke-exports-v1`. Each render has a unique file and a Web Lock so cleanup cannot remove another tab's active render. A small JSON completion record distinguishes finished files from interrupted ones. Cancelled, failed, and interrupted files are removed; completed files have explicit Delete buttons.
+- OPFS uses browser storage quota. A full disk/quota produces an error and cleans up the partial file, with no RAM fallback. Site-data clearing or browser eviction can remove saved exports, so download files you want to keep. Exports are separate for each site origin, including different localhost ports.
+- Export is frame-timed, not real-time screen recording, so it can run faster or slower than playback without deliberately skipping frames. DOM lyric snapshots are still a potential bottleneck. There are no worker, caching, or other large performance changes in this version.
+- Font availability affects typography. No transparent-overlay-only export is included. TTML is limited to 10 MiB.
 
 ## Checks
 
 ```sh
 bun run typecheck
 bun test
-# With the local server running:
-bun run tests/export-smoke.ts http://127.0.0.1:3000
+bun run build
+# Test dependencies only, not needed by app users:
+bun run setup:browser
+# With FFmpeg/ffprobe available and the development app running:
+bun run tests/browser-export-smoke.ts http://127.0.0.1:3000
+bun run tests/opfs-smoke.ts http://127.0.0.1:3000
 bun run tests/renderer-smoke.ts http://127.0.0.1:3000
 ```
 
-The smoke test generates an original four-second test video and checks HTTP upload, TTML import, Chromium rendering, visible composited lyrics, MP4 frame count/duration, audio, invalid TTML handling, and cancellation. `examples/demo.ttml` contains original sample lyrics.
+The browser export test generates synthetic media, blocks network requests during rendering, and verifies the MP4's frame count, timing, audio, colored lyrics and outlines, cancellation, resource cleanup, and variable-frame-rate silent export. FFmpeg is only used by tests to generate and inspect fixtures. `examples/demo.ttml` contains original sample lyrics.
+
+The OPFS test writes a 32 MiB file from a reused 1 MiB block, then checks active-writer protection, simulated quota failure cleanup, interrupted-file cleanup, recovery after reload, and deletion.
 
 ## Code
 
-- `index.ts`: local server, upload, job status, cancellation, download.
-- `src/app.ts`: file selection, preview, settings, export UI.
-- `src/lyrics.ts`: TTML compatibility and AMLL media-clock rendering shared by preview/export.
-- `src/exporter.ts`: video probing, Chromium capture, FFmpeg composition.
+- `index.ts`: development asset server, plus a test-only render page.
+- `src/app.ts`: file selection, preview, settings, browser export UI.
+- `src/browser-export.ts`: local decoding, lyric snapshots, canvas composition and encoding to a disk stream.
+- `src/export-storage.ts`: OPFS writes, completion records, recovery, cleanup and saved downloads.
+- `src/lyrics.ts`: TTML compatibility and AMLL media-clock rendering shared by preview and export.
+- `tests/render-entry.ts`: isolated renderer entry for automated tests, excluded from the static build.
 
 AMLL packages are licensed AGPL-3.0-only. See the installed packages' LICENSE files and [AMLL repository](https://github.com/amll-dev/applemusic-like-lyrics) before distributing this app.
 

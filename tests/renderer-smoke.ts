@@ -11,7 +11,7 @@ try {
     <p ttm:agent="v2" begin="3.2s" end="4s"><span begin="3.2s" end="4s">Next line</span></p>
   </div></body></tt>`;
   let settings = { ...defaults, fontSize: 4.4, bottom: 4, height: 32, textColor: '#ffd45a', duetColor: '#7dd3fc', outlineColor: '#14141c', outlineWidth: 8, offset: 500 };
-  await page.route('**/api/jobs/style-test/config', route => route.fulfill({ json: { ttml, settings } }));
+  await page.route('**/test-config/style-test/config', route => route.fulfill({ json: { ttml, settings } }));
   async function load() {
     await page.goto(`${origin}/render?job=style-test`);
     await page.waitForFunction(() => window.rendererReady || window.rendererError);

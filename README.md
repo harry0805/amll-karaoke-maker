@@ -16,7 +16,7 @@ For another port, run `PORT=3210 bun run start`. Use `bun run dev` while editing
 
 1. Choose a video and a `.ttml` or `.xml` lyric file.
 2. Play or scrub the preview. Choose text and outline colors, a font preset, and outline thickness. Adjust text size, lyric area, bottom and horizontal margins, background shade, and timing offset. A positive offset delays the lyrics.
-3. Choose resolution and frame rate, then click **Export MP4**.
+3. Click **Export MP4**. Resolution and frame rate come from the source.
 4. Wait for the export, then click **Download MP4**. You can cancel a running export.
 
 The default style is rounded bold white text with a black 10% outline. Text size defaults to 5%, bottom margin to 0%, horizontal margin to 4% on each side, lyric area to 35%, background shade to 40%, and timing offset to 0 ms. The separate Duet color picker also defaults to white and applies to lines AMLL marks as duet. Background vocals follow their singer's color. Font presets are rounded bold, sans serif bold, condensed bold, and serif bold, using locally installed fonts with fallbacks. Set outline thickness to zero to turn it off. The outline scales with the text in both preview and export. An SVG filter expands the rendered line alpha after AMLL applies its word masks, avoiding clipped text strokes at word boundaries. Dimmed words still have a dimmer outline, and very thick outlines can soften fine letter details.
@@ -27,8 +27,8 @@ The default lyric box occupies the bottom 35% with room for nearby lines. Long l
 
 ## Output and limits
 
-- H.264 MP4 with AAC audio, 24/30/60 fps. Videos without audio also work.
-- 720p, 1080p, or 4K sets the shorter edge. Aspect ratio is preserved and smaller sources are not upscaled, except rounding to even dimensions required by H.264.
+- H.264 MP4 with AAC audio at the source frame rate, including fractional rates such as 30000/1001. Videos without audio also work. Variable-frame-rate sources export at their average frame rate.
+- Source display dimensions are retained, with rotation and pixel aspect ratio applied. Dimensions round to even numbers required by H.264.
 - Files stay on this computer. The server listens on loopback only. The source is temporarily copied into `.renders/<job-id>/` and removed after export. Finished MP4 files remain there until you delete them. Downloads are available while the server stays running.
 - The preview needs a browser-supported video codec. H.264 MP4 is the safest input. HDR is not explicitly tone-mapped; use an SDR source for predictable colors. Only the first video and audio tracks are exported.
 - Export runs frame by frame, so a long video or 4K/60 fps can take substantially longer than playback. Frames stream directly to FFmpeg rather than collecting image files on disk. One export runs at a time. The upload limit is 20 GiB and TTML is limited to 10 MiB.
@@ -58,3 +58,9 @@ AMLL packages are licensed AGPL-3.0-only. See the installed packages' LICENSE fi
 AMLL 0.5.2 has a local Bun patch in `patches/` that batches its lyric resize callbacks into the next animation frame. This prevents layout writes during ResizeObserver delivery, which can otherwise produce a browser error popup during seeking or resizing. `bun install` reapplies the patch. Recheck it when upgrading AMLL. The app's outline resize callback also defers its writes.
 
 Run `bun run tests/resize-smoke.ts` with the local server on port 3210 to stress repeated seeks and lyric size changes while checking for window errors.
+
+The AMLL patch also releases completed overlapping lines from the scroll target individually. When two lines start together and one ends first, the remaining line scrolls to the top inset using AMLL's springs. The player aligns active lyrics near the top of the lyric area, with an 8% inset for edge fading and word movement. Run `bun run tests/overlap-smoke.ts` against the local server on port 3210 to verify continuous overlap transitions and backward seeking.
+
+Upcoming lyrics have no fixed line-count limit. The lyric box clips them at its edges, and AMLL prepares extra lines below it so they can scroll into view. The Line spacing slider ranges from 0.75× to 2× and changes wrapped-text height and spacing between lyric groups. Its default is 1×. Use a larger lyric area, smaller text, or tighter spacing to fit more lines. Completed lyrics still disappear at their final word's end. Run `bun run tests/line-spacing-smoke.ts` to check offscreen preparation and spacing.
+
+Word masks have vertical padding so compact line spacing does not clip descenders or floating letters. The local AMLL patch measures vertical padding separately from horizontal padding to preserve word-fill timing. Per-line paint clipping is disabled; the outer lyric viewport still clips the scrolling content. Run `bun run tests/glyph-smoke.ts` for the compact-spacing glyph check.

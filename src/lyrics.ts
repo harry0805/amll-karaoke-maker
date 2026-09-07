@@ -58,8 +58,10 @@ export class Lyrics {
     }).observe(stage);
     container.append(this.player.getElement());
     this.player.setEnableBlur(false);
-    this.player.setAlignPosition(0.5);
-    this.player.setAlignAnchor('center');
+    // Leave a small inset for the edge fade and word movement, with upcoming
+    // lines below the earliest active line instead of centering the group.
+    this.player.setAlignPosition(0.08);
+    this.player.setAlignAnchor('top');
     this.player.setWordFadeWidth(0.5);
     this.player.setEnableSpring(true);
     this.player.setEnableScale(true);
@@ -75,6 +77,7 @@ export class Lyrics {
     container.style.left = `${settings.horizontalMargin}%`;
     container.style.width = `${100 - 2 * settings.horizontalMargin}%`;
     this.player.getElement().style.setProperty('--amll-lp-font-size', `${settings.fontSize}cqh`);
+    this.player.getElement().style.setProperty('--line-spacing', String(settings.lineSpacing));
     this.player.getElement().style.setProperty('--amll-lp-color', settings.textColor);
     this.player.getElement().style.setProperty('--duet-color', settings.duetColor);
     container.style.fontFamily = fonts[settings.font];
@@ -84,6 +87,9 @@ export class Lyrics {
     void this.player.calcLayout(true, true);
   }
   private updateOutline() {
+    // Build and measure upcoming lines well below the clipped lyric viewport,
+    // before their springs carry them across its lower edge.
+    this.player.setOverscanPx(Math.max(300, this.stage.clientHeight * 2));
     // CSS text stroke straddles a glyph edge. Dilation grows outward only.
     const radius = this.stage.clientHeight * this.settings.fontSize / 100 * this.settings.outlineWidth / 200;
     this.outlineDilate.setAttribute('radius', String(radius));
@@ -106,7 +112,13 @@ export class Lyrics {
       if (group.bgLine) this.lineEnds.set(group.bgLine, sungEnd(lines[index++]!));
     }
     await document.fonts.ready;
-    await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+    // Deferred resize delivery needs time to measure newly built offscreen
+    // lines too. Settle their geometry before capturing the first frame.
+    for (let pass = 0; pass < 3; pass++) {
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      await this.player.calcLayout(true, true);
+      this.player.update(0);
+    }
     await this.player.calcLayout(true, true);
     this.previous = -1;
     await this.frame(0, 0, true);
@@ -119,20 +131,16 @@ export class Lyrics {
     if (jump) await this.player.calcLayout(true, true);
     this.player.update(Math.min(100, delta));
     const groups = this.player.currentLyricGroups;
-    let focus = groups.findIndex(group => time >= group.startTime && time < group.endTime);
-    if (focus < 0) focus = groups.findIndex(group => group.startTime > time);
-    if (focus < 0) focus = groups.length - 1;
-    // Keep at most three lyric groups in the box. A duet/background vocal
-    // belongs to its main group, and long text may still wrap within a group.
-    groups.forEach((group, index) => {
-      const nearby = Math.abs(index - focus) <= 1;
+    // The viewport clips upcoming lines spatially; never toggle them by index.
+    // This lets them enter from below rather than pop into an empty space.
+    groups.forEach(group => {
       for (const line of [group.mainLine, group.bgLine]) {
         if (!line) continue;
         const end = this.lineEnds.get(line) ?? line.getLine().endTime;
         const element = (line as typeof line & { getElement(): HTMLElement }).getElement();
         // Explicit visibility wins over AMLL's lingering group opacity and is
         // reversible when seeking backward. Do not remove the layout space.
-        element.style.visibility = nearby && time < end ? 'visible' : 'hidden';
+        element.style.visibility = time < end ? 'visible' : 'hidden';
       }
     });
     // AMLL uses Web Animations for word fills. Freeze them at the media time,

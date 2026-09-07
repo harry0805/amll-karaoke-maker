@@ -5,6 +5,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { defaults } from '../src/settings';
 import { strict as assert } from 'node:assert';
+const sourceRate = process.env.TEST_FRAME_RATE || '24';
+const [rateN, rateD = 1] = sourceRate.split('/').map(Number);
+
 const origin = process.argv[2] || 'http://127.0.0.1:3000';
 const dir = await mkdtemp(join(tmpdir(), 'karaoke-test-'));
 async function command(args: string[]) {
@@ -13,7 +16,7 @@ async function command(args: string[]) {
   assert.equal(code, 0, err); return out;
 }
 async function start(ttml: string, source: string) {
-  const body = new FormData(); body.set('video', Bun.file(source), 'test.mp4'); body.set('ttml', new File([ttml], 'lyrics.ttml')); body.set('settings', JSON.stringify({ ...defaults, textColor: '#ffd45a', duetColor: '#7dd3fc', outlineColor: '#14141c', outlineWidth: 5, bottom: 4, height: 32, fps: 24, shade: 0, fontSize: 7 }));
+  const body = new FormData(); body.set('video', Bun.file(source), 'test.mp4'); body.set('ttml', new File([ttml], 'lyrics.ttml')); body.set('settings', JSON.stringify({ ...defaults, textColor: '#ffd45a', duetColor: '#7dd3fc', outlineColor: '#14141c', outlineWidth: 5, bottom: 4, height: 32, shade: 0, fontSize: 7 }));
   const response = await fetch(`${origin}/api/jobs`, { method: 'POST', headers: { origin }, body });
   const result = await response.json() as any; assert.equal(response.status, 200, JSON.stringify(result)); return result.id as string;
 }
@@ -28,7 +31,9 @@ async function wait(id: string) {
 }
 try {
   const source = join(dir, 'input.mp4');
-  await command(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', 'color=c=0x24384a:s=640x360:r=24:d=4', '-f', 'lavfi', '-i', 'sine=frequency=440:duration=4', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', source]);
+  await command(['ffmpeg', '-v', 'error', '-f', 'lavfi', '-i', `color=c=0x24384a:s=640x360:r=${sourceRate}:d=4`, '-f', 'lavfi', '-i', 'sine=frequency=440:duration=4', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', source]);
+  const sourceInfo = JSON.parse(await command(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=nb_frames', '-of', 'json', source]));
+  const expectedFrames = Number(sourceInfo.streams[0].nb_frames);
   const text = (await Bun.file(new URL('../examples/demo.ttml', import.meta.url)).text())
     .replace('<p begin="00:00:01.900"', '<p ttm:agent="v2" begin="00:00:01.900"');
   const id = await start(text, source);
@@ -41,7 +46,9 @@ try {
   assert(info.streams.some((s: any) => s.codec_name === 'aac'));
   assert(Math.abs(Number(info.format.duration) - 4) < 0.1);
   const v = info.streams.find((s: any) => s.codec_type === 'video');
-  assert.equal(v.width, 640); assert.equal(v.height, 360); assert.equal(Number(v.nb_frames), 96);
+  assert.equal(v.width, 640); assert.equal(v.height, 360); assert.equal(Number(v.nb_frames), expectedFrames);
+  const [outN, outD = 1] = v.avg_frame_rate.split('/').map(Number);
+  assert(Math.abs(outN / outD - rateN! / rateD) < 0.00001, 'Output rate must match source');
   // The configured gold fill and dark stroke must survive MP4 composition.
   const raw = Bun.spawn(['ffmpeg', '-v', 'error', '-ss', '1', '-i', output, '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'pipe:1'], { stdout: 'pipe', stderr: 'pipe' });
   const pixels = new Uint8Array(await new Response(raw.stdout).arrayBuffer());
@@ -70,7 +77,7 @@ try {
   let remaining = 0;
   for (let i = 640 * 200 * 3; i < ended.length; i += 3) if (ended[i]! > 150 && ended[i + 1]! > 120 && ended[i + 2]! < 140) remaining++;
   assert.equal(remaining, 0, 'Completed lyrics must not linger in exported frames');
-  console.log(`PASS: MP4 export, audio, duration, 96 frames, visible lyrics. Job ${id}`);
+  console.log(`PASS: MP4 export, audio, duration, ${expectedFrames} source-rate frames, visible lyrics. Job ${id}`);
   const bad = await start('<not-ttml/>', source);
   assert.equal((await wait(bad)).status, 'error');
   console.log('PASS: invalid TTML rejected');

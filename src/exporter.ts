@@ -3,9 +3,18 @@ import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { outputSize, type Settings } from './settings';
+import type { Settings } from './settings';
 
-export interface Metadata { width: number; height: number; duration: number }
+export interface Metadata { width: number; height: number; duration: number; frameRate: string; fps: number }
+export function sourceFrameRate(stream: { avg_frame_rate?: string; r_frame_rate?: string }) {
+  for (const rate of [stream.avg_frame_rate, stream.r_frame_rate]) {
+    if (!rate || !/^\d+(?:\/\d+)?$/.test(rate)) continue;
+    const [numerator, denominator = 1] = rate.split('/').map(Number);
+    const fps = numerator! / denominator;
+    if (Number.isFinite(fps) && fps > 0) return { frameRate: rate, fps };
+  }
+  throw new Error('Cannot determine the source video frame rate.');
+}
 export interface Job { id: string; dir: string; settings: Settings; metadata: Metadata; ttml: string; status: string; progress: number; cancelled: boolean; stop?: () => void; error?: string; frames?: number; totalFrames?: number }
 export async function probe(path: string): Promise<Metadata> {
   const p = Bun.spawn(['ffprobe', '-v', 'error', '-show_streams', '-show_format', '-of', 'json', path], { stdout: 'pipe', stderr: 'pipe' });
@@ -19,7 +28,7 @@ export async function probe(path: string): Promise<Metadata> {
   const rotation = Math.abs(Number(stream.side_data_list?.find((s: any) => s.rotation !== undefined)?.rotation || stream.tags?.rotate || 0));
   const [sn, sd] = String(stream.sample_aspect_ratio || '1:1').split(':').map(Number);
   const displayWidth = stream.width * (sn && sd ? sn / sd : 1);
-  return { width: rotation % 180 === 90 ? stream.height : displayWidth, height: rotation % 180 === 90 ? displayWidth : stream.height, duration };
+  return { width: rotation % 180 === 90 ? stream.height : displayWidth, height: rotation % 180 === 90 ? displayWidth : stream.height, duration, ...sourceFrameRate(stream) };
 }
 
 export async function render(job: Job, origin: string) {
@@ -27,7 +36,10 @@ export async function render(job: Job, origin: string) {
   let encoder: ReturnType<typeof spawn> | undefined;
   let outcome = 'error';
   try {
-    const { width, height } = outputSize(job.metadata.width, job.metadata.height, job.settings.resolution);
+    // H.264 4:2:0 needs even dimensions. Keep the source display dimensions,
+    // rounding by at most one pixel rather than resizing to an export preset.
+    const width = Math.max(2, Math.round(job.metadata.width / 2) * 2);
+    const height = Math.max(2, Math.round(job.metadata.height / 2) * 2);
     job.status = 'preparing';
     browser = await chromium.launch({ headless: true });
     job.stop = () => { encoder?.kill('SIGTERM'); void browser?.close(); };
@@ -37,12 +49,12 @@ export async function render(job: Job, origin: string) {
     await page.waitForFunction(() => window.rendererReady || window.rendererError, null, { timeout: 60000 });
     const error = await page.evaluate(() => window.rendererError);
     if (error) throw new Error(error);
-    const fps = job.settings.fps;
-    const total = Math.ceil(job.metadata.duration * fps);
+    const { fps, frameRate } = job.metadata;
+    const total = Math.ceil(job.metadata.duration * fps - 1e-6);
     job.totalFrames = total;
     encoder = spawn('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y',
-      '-i', join(job.dir, 'source'), '-f', 'image2pipe', '-framerate', String(fps), '-vcodec', 'png', '-i', 'pipe:0',
-      '-filter_complex', `[0:v:0]setpts=PTS-STARTPTS,scale=${width}:${height},setsar=1,fps=${fps}[base];[base][1:v]overlay=0:0:shortest=1:format=auto,format=yuv420p[out]`,
+      '-i', join(job.dir, 'source'), '-f', 'image2pipe', '-framerate', frameRate, '-vcodec', 'png', '-i', 'pipe:0',
+      '-filter_complex', `[0:v:0]setpts=PTS-STARTPTS,scale=${width}:${height},setsar=1,fps=${frameRate}[base];[base][1:v]overlay=0:0:eof_action=repeat:format=auto,format=yuv420p[out]`,
       '-map', '[out]', '-map', '0:a:0?', '-c:v', 'libx264', '-preset', 'fast', '-crf', '18', '-c:a', 'aac', '-b:a', '192k',
       '-t', String(job.metadata.duration), '-movflags', '+faststart', join(job.dir, 'karaoke.mp4')], { stdio: ['pipe', 'ignore', 'pipe'] });
     let log = '';

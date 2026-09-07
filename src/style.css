@@ -4,6 +4,11 @@
 .amll-lyric-player *{transition:none!important}
 
 .font-label { display: block; font-size: 14px; }
+.amll-lyric-player.dom { line-height: calc(1.2 * var(--line-spacing, 1)); }
+.amll-lyric-player [class*="_lyricLineWrapper"] {
+  padding-block: calc(.4em * var(--line-spacing, 1));
+  gap: calc(.3em * var(--line-spacing, 1));
+}
 .amll-lyric-player [class*="_lyricDuetLine"] { color: var(--duet-color); }
 .color-controls { display: flex; gap: 18px; margin-top: 16px; }
 .color-controls label { flex: 1; font-size: 14px; }
@@ -15,4 +20,14 @@
 .amll-lyric-player [class*="_lyricMainLine"],
 .amll-lyric-player [class*="_lyricSubLine"] {
   filter: var(--lyric-outline-filter, none);
+}
+/* Word masks need room for descenders and floating glyphs even in compact rows. */
+.amll-lyric-player [class*="_lyricMainLine"] span[style*="mask-image"] {
+  padding-block: 1em;
+  margin-block: -1em;
+}
+.amll-lyric-player [class*="_lyricLine"]:not([class*="_lyricLineWrapper"]) {
+  contain: layout style;
+  content-visibility: visible;
+  overflow: visible;
 }

@@ -45,6 +45,7 @@ async function main() {
       settings = readSettings();
       lyrics.configure(settings);
       for (const key of ['fontSize', 'bottom', 'height', 'shade'] as const) $(`${key}-value`).textContent = `${settings[key]}%`;
+      $('lineSpacing-value').textContent = `${settings.lineSpacing.toFixed(2)}×`;
       $('horizontalMargin-value').textContent = `${settings.horizontalMargin}% each side`;
       $('outlineWidth-value').textContent = settings.outlineWidth ? `${settings.outlineWidth}%` : 'Off';
       void lyrics.frame(video.currentTime * 1000, 0, true);

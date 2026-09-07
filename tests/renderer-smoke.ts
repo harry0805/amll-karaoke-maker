@@ -10,7 +10,7 @@ try {
     <p ttm:agent="v1" begin="0s" end="1.8s"><span begin="0s" end="0.8s">Golden </span><span begin="0.8s" end="1.8s">words</span><span ttm:role="x-bg" begin="0.5s" end="3s"><span begin="0.5s" end="3s">Echo</span></span></p>
     <p ttm:agent="v2" begin="3.2s" end="4s"><span begin="3.2s" end="4s">Next line</span></p>
   </div></body></tt>`;
-  let settings = { ...defaults, fontSize: 4.4, bottom: 4, height: 32, textColor: '#ffd45a', duetColor: '#7dd3fc', outlineColor: '#14141c', outlineWidth: 8, offset: 500 };
+  let settings = { ...defaults, useDuetColors: true, duetOutlineColor: '#cc00ff', duetOutlineWidth: 4, fontSize: 4.4, bottom: 4, height: 32, textColor: '#ffd45a', duetColor: '#7dd3fc', outlineColor: '#14141c', outlineWidth: 8, offset: 500 };
   await page.route('**/test-config/style-test/config', route => route.fulfill({ json: { ttml, settings } }));
   async function load() {
     await page.goto(`${origin}/render?job=style-test`);
@@ -24,6 +24,14 @@ try {
   await load();
   const colors = await page.evaluate(() => Array.from(document.querySelectorAll('[class*="_lyricMainLine"]')).map(el => getComputedStyle(el).color));
   assert.deepEqual(colors, ['rgb(255, 212, 90)', 'rgb(255, 212, 90)', 'rgb(125, 211, 252)'], 'Only duet lines should use the duet color');
+  const duetOutline = await page.evaluate(() => {
+    const line = document.querySelector('[class*="_lyricDuetLine"] [class*="_lyricMainLine"]')!;
+    const filter = document.querySelector('filter[id$="-duet"]')!;
+    return { filter: getComputedStyle(line).filter, color: filter.querySelector('feFlood')!.getAttribute('flood-color'), radius: Number(filter.querySelector('feMorphology')!.getAttribute('radius')) };
+  });
+  assert(duetOutline.filter.includes('-duet'));
+  assert.equal(duetOutline.color, '#cc00ff');
+  assert(Math.abs(duetOutline.radius - .4752) < .01);
   assert((await visibleAt(2299)).includes('Golden words'));
   const atEnd = await visibleAt(2300);
   assert(atEnd.includes('Golden words'), 'Fade should begin without an instant cut');

@@ -1,6 +1,6 @@
-import { validateSettings, type Settings } from './settings';
+import { defaults, appearanceSettings, validateSettings, type PresetSettings, type Settings } from './settings';
 
-export interface Preset { id: string; name: string; settings: Settings }
+export interface Preset { id: string; name: string; settings: PresetSettings }
 export const CURRENT_SETTINGS_KEY = 'karaoke-studio.settings.v1';
 export const PRESETS_KEY = 'karaoke-studio.presets.v1';
 const FORMAT = 'karaoke-studio-presets';
@@ -11,7 +11,7 @@ export function presetName(value: unknown): string {
   return value.trim();
 }
 export function serializePresets(presets: Pick<Preset, 'name' | 'settings'>[]): string {
-  return JSON.stringify({ format: FORMAT, version: 1, presets: presets.map(p => ({ name: presetName(p.name), settings: validateSettings(p.settings) })) }, null, 2);
+  return JSON.stringify({ format: FORMAT, version: 1, presets: presets.map(p => ({ name: presetName(p.name), settings: validatePresetSettings(p.settings) })) }, null, 2);
 }
 export function parsePresets(text: string): Preset[] {
   if (text.length > 1024 * 1024) throw new Error('Preset files must be smaller than 1 MB.');
@@ -24,7 +24,7 @@ export function parsePresets(text: string): Preset[] {
   return document.presets.map((entry: unknown) => {
     if (!entry || typeof entry !== 'object') throw new Error('Each preset needs a name and settings.');
     const preset = entry as { name?: unknown; settings?: unknown };
-    return { id: crypto.randomUUID(), name: presetName(preset.name), settings: validateSettings(preset.settings) };
+    return { id: crypto.randomUUID(), name: presetName(preset.name), settings: validatePresetSettings(preset.settings) };
   });
 }
 export function mergePresets(existing: Preset[], incoming: Preset[]): Preset[] {
@@ -40,14 +40,12 @@ export function mergePresets(existing: Preset[], incoming: Preset[]): Preset[] {
 
 // Local identity is persisted only in the browser library, never in portable files.
 export function serializeStoredPresets(presets: Preset[]): string {
-  return JSON.stringify({ format: STORAGE_FORMAT, version: 1, presets });
+  return JSON.stringify({ format: STORAGE_FORMAT, version: 1, presets: presets.map(p => ({ ...p, settings: validatePresetSettings(p.settings) })) });
 }
 
 export function parseStoredPresets(text: string): Preset[] {
   const data = JSON.parse(text);
   if (!data || data.version !== 1 || !Array.isArray(data.presets) || data.presets.length > MAX_PRESETS) throw new Error('Invalid saved preset library.');
-  // Old libraries used the portable format. The caller saves the generated IDs once.
-  if (data.format === FORMAT) return data.presets.length ? parsePresets(text) : [];
   if (data.format !== STORAGE_FORMAT) throw new Error('Invalid saved preset library.');
   const ids = new Set<string>();
   return data.presets.map((entry: unknown) => {
@@ -55,7 +53,7 @@ export function parseStoredPresets(text: string): Preset[] {
     const preset = entry as Partial<Preset>;
     if (typeof preset.id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(preset.id) || ids.has(preset.id)) throw new Error('Invalid saved preset ID.');
     ids.add(preset.id);
-    return { id: preset.id, name: presetName(preset.name), settings: validateSettings(preset.settings) };
+    return { id: preset.id, name: presetName(preset.name), settings: validatePresetSettings(preset.settings) };
   });
 }
 
@@ -83,7 +81,12 @@ export function persistCurrentSettings(settings: Settings, session: Pick<Storage
   if (failed) throw new Error('Some browser storage is unavailable. Settings may not survive closing this tab.');
 }
 
-export function presetLabel(name: string, saved: Settings, current: Settings): string {
-  const modified = (Object.keys(saved) as (keyof Settings)[]).some(key => saved[key] !== current[key]);
+export function presetLabel(name: string, saved: PresetSettings, current: Settings): string {
+  const modified = (Object.keys(appearanceSettings(current)) as (keyof PresetSettings)[]).some(key => saved[key] !== current[key]);
   return name + (modified ? ' (Modified)' : '');
+}
+
+function validatePresetSettings(input: unknown): PresetSettings {
+  if (!input || typeof input !== 'object') throw new Error('Invalid preset settings.');
+  return appearanceSettings(validateSettings({ offset: defaults.offset, showLyricsBeforeStart: defaults.showLyricsBeforeStart, ...input }));
 }

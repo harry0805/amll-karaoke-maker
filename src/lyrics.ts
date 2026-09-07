@@ -1,3 +1,4 @@
+import { backgroundGradient } from './background-gradient';
 import { DomLyricPlayer, type LyricLine } from '@applemusic-like-lyrics/core';
 import { parseTTML } from '@applemusic-like-lyrics/ttml';
 import { fonts, type Settings } from './settings';
@@ -41,6 +42,9 @@ export class Lyrics {
   private outlineSVG: SVGSVGElement;
   private resizeObserver: ResizeObserver;
   private outlineFrame = 0;
+  private duetOutlineId = `${this.outlineId}-duet`;
+  private duetOutlineDilate: SVGFEMorphologyElement;
+  private duetOutlineFlood: SVGFEFloodElement;
   constructor(private stage: HTMLElement, private container: HTMLElement, settings: Settings) {
     this.settings = settings;
     // Apply the outline after the words have been masked and animated. A text
@@ -54,6 +58,11 @@ export class Lyrics {
     svg.innerHTML = `<defs><filter id="${this.outlineId}" x="-20%" y="-50%" width="140%" height="200%" color-interpolation-filters="sRGB"><feMorphology in="SourceAlpha" operator="dilate" radius="0" result="expanded"/><feFlood result="color"/><feComposite in="color" in2="expanded" operator="in" result="outline"/><feMerge><feMergeNode in="outline"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>`;
     this.outlineDilate = svg.querySelector('feMorphology')!;
     this.outlineFlood = svg.querySelector('feFlood')!;
+    const duetFilter = svg.querySelector('filter')!.cloneNode(true) as SVGFilterElement;
+    duetFilter.id = this.duetOutlineId;
+    svg.querySelector('defs')!.append(duetFilter);
+    this.duetOutlineDilate = duetFilter.querySelector('feMorphology')!;
+    this.duetOutlineFlood = duetFilter.querySelector('feFlood')!;
     stage.append(svg);
     this.outlineSVG = svg;
     this.resizeObserver = new ResizeObserver(() => {
@@ -93,11 +102,12 @@ export class Lyrics {
     this.player.getElement().style.setProperty('--amll-lp-font-size', `${settings.fontSize}cqh`);
     this.player.getElement().style.setProperty('--line-spacing', String(settings.lineSpacing));
     this.player.getElement().style.setProperty('--amll-lp-color', settings.textColor);
-    this.player.getElement().style.setProperty('--duet-color', settings.duetColor);
+    this.player.getElement().style.setProperty('--duet-color', settings.useDuetColors ? settings.duetColor : settings.textColor);
     container.style.fontFamily = fonts[settings.font];
     this.updateOutline();
     if (fontChanged) this.player.rebuildLyricLines();
-    this.stage.style.setProperty('--shade', String(settings.shade / 100));
+    this.stage.style.setProperty('--shade-background', backgroundGradient(settings));
+    this.stage.style.setProperty('--shade-height', `${settings.shadeHeight}%`);
     void this.player.calcLayout(true, true);
   }
   private updateIntro() {
@@ -117,6 +127,10 @@ export class Lyrics {
     this.outlineDilate.setAttribute('radius', String(radius));
     this.outlineFlood.setAttribute('flood-color', this.settings.outlineColor);
     this.player.getElement().style.setProperty('--lyric-outline-filter', radius > 0 ? `url(#${this.outlineId})` : 'none');
+    const duetRadius = this.stage.clientHeight * this.settings.fontSize / 100 * (this.settings.useDuetColors ? this.settings.duetOutlineWidth : this.settings.outlineWidth) / 200;
+    this.duetOutlineDilate.setAttribute('radius', String(duetRadius));
+    this.duetOutlineFlood.setAttribute('flood-color', this.settings.useDuetColors ? this.settings.duetOutlineColor : this.settings.outlineColor);
+    this.player.getElement().style.setProperty('--duet-outline-filter', duetRadius > 0 ? `url(#${this.duetOutlineId})` : 'none');
   }
   async load(text: string) {
     const lines = parseLyrics(text);

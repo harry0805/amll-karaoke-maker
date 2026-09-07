@@ -51,7 +51,7 @@ async function main() {
       link.href = URL.createObjectURL(item.file); downloadURLs.push(link.href);
       link.download = item.name; link.append(createIcon('download'), 'Download'); link.setAttribute('aria-label', `Download ${item.name}`);
       const remove = document.createElement('button');
-      remove.append(createIcon('trash-2'), 'Delete'); remove.setAttribute('aria-label', `Delete saved export ${item.name}`);
+      remove.append(createIcon('trash-2'), 'Delete'); remove.setAttribute('aria-label', `Delete saved render ${item.name}`);
       remove.addEventListener('click', async () => {
         remove.disabled = true;
         try { await deleteStoredExport(item.id); await refreshSavedExports(); }
@@ -78,7 +78,7 @@ async function main() {
     });
     $('next-step').hidden = index === 2;
     document.querySelector<HTMLElement>('.step-actions')!.hidden = index === 2;
-    $('next-step-label').textContent = index === 0 ? 'Next: Settings' : 'Next: Export';
+    $('next-step-label').textContent = index === 0 ? 'Next: Settings' : 'Next: Render';
     document.querySelector('.step-scroll')!.scrollTop = 0;
   }
   async function requestStep(index: number, focus = false) {
@@ -121,13 +121,13 @@ async function main() {
   $('next-step').addEventListener('click', () => void requestStep(Math.min(2, currentStep + 1), true));
   const updateExport = () => {
     const reasons: string[] = [];
-    if (exporting) reasons.push('Export is already running.');
+    if (exporting) reasons.push('A render is already running.');
     else {
-      if (!videoFile) reasons.push('Load a video in Source to export.');
+      if (!videoFile) reasons.push('Load a video in Source to render.');
       else if (!loaded) reasons.push(video.error || video.readyState >= 1
         ? 'The video could not be loaded. Choose a supported video in Source.'
         : 'Waiting for the video to load.');
-      if (!ttmlFile) reasons.push('Load a valid TTML lyrics file in Source to export.');
+      if (!ttmlFile) reasons.push('Load a valid TTML lyrics file in Source to render.');
     }
     const message = reasons.join(' ');
     $('export-requirements').textContent = message;
@@ -140,20 +140,24 @@ async function main() {
     const control = input(key === 'shade' ? 'shade-control' : key);
     if (control.type === 'checkbox') return [key, control.checked];
     const value = control.value;
-    return [key, ['textColor', 'duetColor', 'font', 'outlineColor'].includes(key) ? value : Number(value)];
+    return [key, ['backgroundColor', 'textColor', 'duetColor', 'font', 'outlineColor', 'duetOutlineColor'].includes(key) ? value : Number(value)];
   })));
-  function changeSettings() {
+  function changeSettings(event?: Event) {
     try {
       settings = readSettings();
       lyrics.configure(settings);
-      for (const key of ['fontSize', 'bottom', 'height', 'shade'] as const) $(`${key}-value`).textContent = `${settings[key]}%`;
+      for (const key of ['fontSize', 'bottom', 'height', 'shade', 'shadeHeight', 'shadeFadeStart'] as const) $(`${key}-value`).textContent = `${settings[key]}%`;
       $('lineSpacing-value').textContent = `${settings.lineSpacing.toFixed(2)}×`;
-      $('horizontalMargin-value').textContent = `${settings.horizontalMargin}% each side`;
-      $('outlineWidth-value').textContent = settings.outlineWidth ? `${settings.outlineWidth}%` : 'Off';
+      $('horizontalMargin-value').textContent = `${settings.horizontalMargin}%`;
+      for (const key of ['outlineWidth', 'duetOutlineWidth'] as const) $(`${key}-value`).textContent = settings[key] ? `${settings[key]}%` : 'Off';
+      $('duet-style').hidden = !settings.useDuetColors;
       void lyrics.frame(video.currentTime * 1000, 0, true);
       showError('', 'settings');
       presetControls?.changed();
-    } catch (error) { showError(String(error), 'settings'); }
+    } catch (error) {
+      const id = (event?.target as HTMLElement | null)?.id;
+      showError(String(error), id === 'offset' || id === 'showLyricsBeforeStart' ? 'source' : 'settings');
+    }
   }
   for (const key of Object.keys(defaults) as (keyof Settings)[]) {
     const control = input(key === 'shade' ? 'shade-control' : key);
@@ -178,8 +182,8 @@ async function main() {
     $("source-compatibility-issues").replaceChildren();
     $("source-compatibility-issues").hidden = true;
     $<HTMLDialogElement>('compatibility-warning').close();
-    $('compatibility-status').textContent = 'Checking export compatibility…';
-    compatibility = checkExportCompatibility(file).catch(() => ['Export compatibility could not be checked. This file may not be exportable.']).then(warnings => {
+    $('compatibility-status').textContent = 'Checking render compatibility…';
+    compatibility = checkExportCompatibility(file).catch(() => ['Render compatibility could not be checked. This file may not be rendered.']).then(warnings => {
       if (videoFile !== file) return;
       compatibilityWarnings = warnings;
       $('compatibility-status').textContent = '';
@@ -282,7 +286,7 @@ async function main() {
     exportController = new AbortController();
     try {
       settings = readSettings(); setBusy(true); video.pause();
-      $('progress-area').hidden = false; $('status').textContent = 'Preparing browser export…';
+      $('progress-area').hidden = false; $('status').textContent = 'Preparing render…';
       $<HTMLProgressElement>('progress').value = 0;
       await exportVideo({
         video: videoFile, ttml: await ttmlFile.text(), settings,
@@ -298,10 +302,10 @@ async function main() {
       });
       await refreshSavedExports();
       $<HTMLProgressElement>('progress').value = 1;
-      $('status').textContent = 'Export saved on this device';
+      $('status').textContent = 'Render saved on this device';
     } catch (error) {
-      if (exportController.signal.aborted) $('status').textContent = 'Export cancelled';
-      else { showError(String(error), 'export'); $('status').textContent = 'Export failed'; }
+      if (exportController.signal.aborted) $('status').textContent = 'Render cancelled';
+      else { showError(String(error), 'export'); $('status').textContent = 'Render failed'; }
     } finally {
       exportController = undefined; exportPreview.hidden = true;
       exportPreview.width = exportPreview.height = 0;

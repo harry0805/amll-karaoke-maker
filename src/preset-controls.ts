@@ -1,5 +1,5 @@
 import { createIcon, type IconName } from './icons';
-import { defaults, type Settings } from './settings';
+import { defaults, appearanceSettings, applyAppearance, type Settings } from './settings';
 import { parseStoredPresets, serializeStoredPresets, presetLabel, restoreCurrentSettings, persistCurrentSettings, PRESETS_KEY, MAX_PRESETS, mergePresets, parsePresets, presetName, serializePresets, type Preset } from './presets';
 
 export function setupPresets(getSettings: () => Settings, applySettings: (settings: Settings) => void) {
@@ -10,7 +10,7 @@ export function setupPresets(getSettings: () => Settings, applySettings: (settin
   const positionPanel = () => {
     if (!panel.matches(':popover-open')) return;
     const sidebar = document.querySelector('aside')!.getBoundingClientRect();
-    const width = Math.min(360, window.innerWidth - 32);
+    const width = Math.min(380, window.innerWidth - 32);
     const left = sidebar.left >= width + 28 ? sidebar.left - width - 16 : (window.innerWidth - width) / 2;
     const top = Math.max(16, Math.min(sidebar.top + 48, window.innerHeight - 300));
     panel.style.width = width + 'px';
@@ -62,7 +62,7 @@ export function setupPresets(getSettings: () => Settings, applySettings: (settin
   const isModified = () => {
     const saved = presets.find(p => p.id === activeId)?.settings || defaults;
     const current = getSettings();
-    return (Object.keys(defaults) as (keyof Settings)[]).some(key => saved[key] !== current[key]);
+    return presetLabel('', saved, current) !== '';
   };
   const updateLabels = () => {
     activeId = select.value;
@@ -110,13 +110,16 @@ export function setupPresets(getSettings: () => Settings, applySettings: (settin
       const action = (label: string, callback: () => void) => {
         const button = document.createElement('button'); button.type = 'button';
         const actionIcons: Record<string, IconName> = { Rename: 'pencil', Update: 'save', Export: 'download', Delete: 'trash-2' };
-        button.append(createIcon(actionIcons[label]!), label);
+        button.append(createIcon(actionIcons[label]!));
+        if (label === 'Rename') { button.className = 'preset-rename'; button.title = 'Rename preset'; }
+        else button.append(label);
         button.setAttribute('aria-label', label + ' ' + preset.name);
         button.addEventListener('click', () => { if (!busy) safely(callback); });
-        actions.append(button); return button;
+        (label === 'Rename' ? heading : actions).append(button); return button;
       };
       {
-        action('Rename', () => {
+        const rename = action('Rename', () => {
+          rename.hidden = true;
           const previousActions = Array.from(actions.children);
           const field = document.createElement('input'); field.className = 'preset-inline-name'; field.value = preset.name; field.maxLength = 80;
           field.setAttribute('aria-label', 'New name for ' + preset.name);
@@ -127,7 +130,7 @@ export function setupPresets(getSettings: () => Settings, applySettings: (settin
           const cancel = document.createElement('button'); cancel.append(createIcon('x'), 'Cancel'); cancel.type = 'button';
           const restore = () => {
             field.replaceWith(title); actions.replaceChildren(...previousActions);
-            (previousActions[0] as HTMLButtonElement)?.focus();
+            rename.hidden = false; rename.focus();
           };
           const commit = () => {
             if (busy) return;
@@ -144,7 +147,7 @@ export function setupPresets(getSettings: () => Settings, applySettings: (settin
           actions.replaceChildren(save, cancel); field.focus(); field.select();
         });
         action('Update', () => confirmAction('Replace the settings saved in "' + preset.name + '" with your current settings?', 'Update preset', () => {
-          persist(presets.map(p => p.id === preset.id ? { ...p, settings: { ...getSettings() } } : p)); message('Updated ' + preset.name + '.');
+          persist(presets.map(p => p.id === preset.id ? { ...p, settings: appearanceSettings(getSettings()) } : p)); message('Updated ' + preset.name + '.');
         }));
       }
       action('Export', () => exportPreset(preset));
@@ -188,7 +191,7 @@ export function setupPresets(getSettings: () => Settings, applySettings: (settin
     const preset = presets.find(p => p.id === id);
     if (id !== 'default' && !preset) throw new Error('That preset is no longer available. Choose another preset.');
     select.value = id;
-    applySettings({ ...(preset?.settings || defaults) });
+    applySettings(applyAppearance(getSettings(), preset?.settings || defaults));
     updateLabels(); rememberSelection();
     $('preset-status').textContent = '';
   };
@@ -222,7 +225,7 @@ export function setupPresets(getSettings: () => Settings, applySettings: (settin
       if (busy) return;
       if (presets.length >= MAX_PRESETS) throw new Error('You can store up to 100 presets.');
       const title = presetName(name.value);
-      const preset = { id: crypto.randomUUID(), name: title, settings: { ...getSettings() } };
+      const preset = { id: crypto.randomUUID(), name: title, settings: appearanceSettings(getSettings()) };
       persist([...presets, preset], preset.id); name.value = ''; updateButtons(); message('');
     });
   });

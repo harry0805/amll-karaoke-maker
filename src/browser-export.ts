@@ -21,7 +21,7 @@ async function renderToFile(options: ExportOptions, stream: FileSystemWritableFi
   const { signal, preview, onProgress } = options;
   signal.throwIfAborted();
   if (!isSecureContext || typeof VideoEncoder === 'undefined' || typeof VideoDecoder === 'undefined') {
-    throw new Error('Browser export needs WebCodecs. Open this site over HTTPS or localhost in a recent Chrome, Edge, or Safari.');
+    throw new Error('Browser rendering needs WebCodecs. Open this site over HTTPS or localhost in a recent Chrome, Edge, or Safari.');
   }
   const input = new Input({ source: new BlobSource(options.video, { maxCacheSize: 8 * 1024 ** 2 }), formats: ALL_FORMATS });
   // Write regular MP4 chunks immediately, then seek back to update headers.
@@ -39,14 +39,14 @@ async function renderToFile(options: ExportOptions, stream: FileSystemWritableFi
   signal.addEventListener('abort', cancel);
   try {
     const track = await input.getPrimaryVideoTrack();
-    if (!track || !(await track.canDecode())) throw new Error('This browser cannot decode the source video for export. Try an H.264 MP4.');
+    if (!track || !(await track.canDecode())) throw new Error('This browser cannot decode the source video for rendering. Try an H.264 MP4.');
     const width = Math.ceil(await track.getDisplayWidth() / 2) * 2;
     const height = Math.ceil(await track.getDisplayHeight() / 2) * 2;
     const duration = await input.computeDuration();
     const audioTrack = await input.getPrimaryAudioTrack();
     const copyAudio = audioTrack && await audioTrack.getCodec() === 'aac';
     if (audioTrack && !copyAudio) {
-      throw new Error('This first browser exporter supports AAC audio or video without audio. Convert the source audio to AAC before exporting.');
+      throw new Error('Browser rendering supports AAC audio or video without audio. Convert the source audio to AAC before rendering.');
     }
     const audioSource = copyAudio ? new EncodedAudioPacketSource('aac') : undefined;
     if (audioSource) output.addAudioTrack(audioSource);
@@ -108,7 +108,7 @@ async function renderToFile(options: ExportOptions, stream: FileSystemWritableFi
     });
     // Conversion otherwise permits silently dropping an unsupported audio track.
     if (!conversion.isValid || conversion.discardedTracks.some(({ track }) => track !== audioTrack || !audioSource)) {
-      throw new Error('This browser cannot encode this video or its audio as MP4. Try a recent Chrome, Edge, or Safari with an H.264/AAC source. No tracks were exported.');
+      throw new Error('This browser cannot encode this video or its audio as MP4. Try a recent Chrome, Edge, or Safari with an H.264/AAC source. No tracks were rendered.');
     }
     signal.throwIfAborted();
     conversion.onProgress = progress => {

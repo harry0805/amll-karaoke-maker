@@ -1,12 +1,15 @@
 import { expect, test } from 'bun:test';
-import { defaults } from '../src/settings';
+import { defaults, appearanceSettings, applyAppearance } from '../src/settings';
 import { parsePresets, serializePresets, mergePresets, parseStoredPresets, serializeStoredPresets } from '../src/presets';
 
-test('preset files round-trip all settings, including offset and boolean flags', () => {
-  const settings = { ...defaults, offset: 4200, showLyricsBeforeStart: true, font: 'serif' as const, duetColor: '#ffaa00' };
+test('presets round-trip appearance and exclude source timing', () => {
+  const settings = { ...defaults, offset: 4200, showLyricsBeforeStart: true, font: 'serif' as const, duetColor: '#ffaa00', useDuetColors: true, duetOutlineColor: '#ff0088', duetOutlineWidth: 6, shadeHeight: 72, shade: 100, shadeFadeStart: 35, backgroundColor: '#123abc' };
   const [preset] = parsePresets(serializePresets([{ name: 'Duet', settings }]));
   expect(preset!.name).toBe('Duet');
-  expect(preset!.settings).toEqual(settings);
+  expect(preset!.settings).toEqual(appearanceSettings(settings));
+  expect(preset!.settings).not.toHaveProperty('offset');
+  expect(preset!.settings).not.toHaveProperty('showLyricsBeforeStart');
+  expect(applyAppearance({ ...defaults, offset: 900, showLyricsBeforeStart: true }, preset!.settings)).toEqual({ ...settings, offset: 900 });
 });
 test('invalid imports are rejected as a whole', () => {
   const valid = JSON.parse(serializePresets([{ name: 'Valid', settings: defaults }]));
@@ -15,16 +18,16 @@ test('invalid imports are rejected as a whole', () => {
 });
 test('imports preserve existing names and settings when names collide', () => {
   const existing = parsePresets(serializePresets([{ name: 'Duet', settings: defaults }]));
-  const incoming = parsePresets(serializePresets([{ name: 'duet', settings: { ...defaults, offset: 100 } }, { name: 'duet', settings: defaults }]));
+  const incoming = parsePresets(serializePresets([{ name: 'duet', settings: { ...defaults, fontSize: 10 } }, { name: 'duet', settings: defaults }]));
   const merged = mergePresets(existing, incoming);
   expect(merged.map(p => p.name)).toEqual(['Duet', 'duet', 'duet']);
   expect(merged[0]).toEqual(existing[0]);
-  expect(merged[1]!.settings.offset).toBe(100);
+  expect(merged[1]!.settings.fontSize).toBe(10);
   expect(existing).toHaveLength(1);
 });
 
 test('local IDs survive reloads and distinguish identical names', () => {
-  const presets = parsePresets(serializePresets([{ name: 'Same', settings: defaults }, { name: 'Same', settings: { ...defaults, offset: 100 } }]));
+  const presets = parsePresets(serializePresets([{ name: 'Same', settings: defaults }, { name: 'Same', settings: { ...defaults, fontSize: 10 } }]));
   expect(presets[0]!.id).not.toBe(presets[1]!.id);
   expect(parseStoredPresets(serializeStoredPresets(presets))).toEqual(presets);
   expect(parseStoredPresets(serializeStoredPresets([]))).toEqual([]);
@@ -43,9 +46,8 @@ test('exports exclude identity and every import creates fresh IDs even if suppli
   expect(first[0]!.name).toBe('Default');
 });
 
-test('legacy libraries migrate to persistent IDs and merges resolve ID collisions only', () => {
-  const legacy = serializePresets([{ name: 'Same', settings: defaults }]);
-  const migrated = parseStoredPresets(legacy);
+test('merges resolve ID collisions only', () => {
+  const migrated = parsePresets(serializePresets([{ name: 'Same', settings: defaults }]));
   expect(parseStoredPresets(serializeStoredPresets(migrated))).toEqual(migrated);
   const merged = mergePresets(migrated, migrated);
   expect(merged.map(p => p.name)).toEqual(['Same', 'Same']);
@@ -78,10 +80,10 @@ test('invalid session data falls back to local, and storage failures do not prev
 
 import { presetLabel } from '../src/presets';
 test('selected preset labels reflect changes and revert when settings match', () => {
-  expect(presetLabel('Default', defaults, { ...defaults, offset: 500 })).toBe('Default (Modified)');
+  expect(presetLabel('Default', defaults, { ...defaults, offset: 500 })).toBe('Default');
   expect(presetLabel('Duet', defaults, { ...defaults, duetColor: '#ffaa00' })).toBe('Duet (Modified)');
   expect(presetLabel('Duet', defaults, { ...defaults })).toBe('Duet');
-  expect(presetLabel('Duet', { ...defaults, offset: 500 }, { ...defaults, offset: 500 })).toBe('Duet');
+  expect(presetLabel('Duet', appearanceSettings(defaults), { ...defaults, offset: 500, showLyricsBeforeStart: true })).toBe('Duet');
 });
 
 test('malformed JSON imports have an actionable error', () => {

@@ -18,6 +18,24 @@ bun run build
 
 Publish the contents of `dist/` to any static HTTPS host. No Bun runtime, upload endpoint, cross-origin isolation, or server configuration is required. HTTPS or localhost is needed for WebCodecs. This is browser-local processing, not a standalone file:// app or an installed offline PWA.
 
+### Deploy to Cloudflare Workers
+
+Wrangler is a development dependency. Use Bun and a current Node.js LTS release locally, then run:
+
+```sh
+bun install
+bunx wrangler login
+bun run deploy
+```
+
+Login opens your browser to authorize Cloudflare access. Deployment runs the build automatically and uploads only `dist/`. Wrangler prints the HTTPS address under `karaoke-amll-renderer.<your-subdomain>.workers.dev`. Change `name` in `wrangler.jsonc` to use a different Worker name.
+
+This is an assets-only Worker with no Worker script or backend bindings. Video processing and saved exports stay in the browser. Cloudflare currently provides free, unlimited static asset requests with no asset storage charge. See [static asset billing and limits](https://developers.cloudflare.com/workers/static-assets/billing-and-limitations/).
+
+To preview the production build locally, run `bun run preview`. To check deployment configuration without publishing, run `bun run deploy --dry-run`. Both commands rebuild `dist/` first. Unknown paths return 404 because the app has no client-side routes.
+
+### Use the app
+
 1. Choose a video and a TTML file.
 2. Preview the lyrics and adjust their style and placement.
 3. Click Export MP4. The preview displays the actual composite frames sent to the encoder.

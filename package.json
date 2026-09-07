@@ -5,7 +5,8 @@
   "private": true,
   "devDependencies": {
     "@types/bun": "latest",
-    "playwright": "^1.63.0"
+    "playwright": "^1.63.0",
+    "wrangler": "^4.129.0"
   },
   "peerDependencies": {
     "typescript": "^7.0.2"
@@ -23,7 +24,9 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "setup:browser": "playwright install chromium",
-    "build": "bun scripts/build.ts"
+    "build": "bun scripts/build.ts",
+    "preview": "wrangler dev",
+    "deploy": "wrangler deploy"
   },
   "patchedDependencies": {
     "@applemusic-like-lyrics/core@0.5.2": "patches/@applemusic-like-lyrics%2Fcore@0.5.2.patch"

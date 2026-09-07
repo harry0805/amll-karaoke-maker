@@ -266,7 +266,7 @@ async function main() {
     stage.closest<HTMLElement>('.preview-frame')!.style.setProperty('--video-aspect', String(video.videoWidth / video.videoHeight));
     input('seek').max = String(video.duration); input('seek').disabled = false;
     for (const id of ['play', 'rewind', 'forward']) $<HTMLButtonElement>(id).disabled = exporting;
-    $('media-info').textContent = `${video.videoWidth} × ${video.videoHeight} · ${formatTime(video.duration)}`;
+    $('media-info').textContent = `${video.videoWidth} × ${video.videoHeight}`;
     void lyrics.player.calcLayout(true, true); updateExport();
   });
   video.addEventListener('error', () => { loaded = false; updateExport(); showError('This browser cannot preview that video codec. Convert the source to an H.264 MP4 and try again.'); });

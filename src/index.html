@@ -20,6 +20,14 @@
       <section class="panel"><h2>Source files</h2><label class="file-picker"><span><strong>Video</strong></span><input id="video-file" type="file" accept="video/*,.mkv,.mov,.mp4,.webm"><span id="video-name">Choose video ↗</span></label><label class="file-picker"><span><strong>Lyrics</strong></span><input id="ttml-file" type="file" accept=".ttml,.xml"><span id="ttml-name">Choose TTML ↗</span></label><p id="lyrics-info" class="hint">Word timing comes from your TTML file.</p><p class="hint">Create or edit lyrics for your song in <a href="https://tool.amll.dev/" target="_blank" rel="noopener noreferrer">AMLL TTML Tool ↗</a>, then import the TTML here.</p></section>
       <p id="compatibility-status" class="hint" role="status" aria-live="polite"></p><ul id="source-compatibility-issues" class="hint" aria-live="polite" hidden></ul><p id="source-error" class="step-error" role="alert" hidden></p></div>
       <div id="step-settings" role="tabpanel" aria-labelledby="tab-settings" tabindex="0" hidden>
+      <section class="panel preset-main"><div class="preset-section-heading"><h2>Preset</h2></div>
+        <select id="preset-select" aria-label="Preset"><option value="default">Default</option></select>
+        <div class="preset-main-actions">
+        <button id="preset-open" popovertarget="preset-panel" aria-controls="preset-panel" aria-expanded="false">Manage presets</button>
+        <button id="preset-reset" type="button" disabled>Reset changes</button>
+        </div>
+        <p id="preset-status" class="hint" role="status" aria-live="polite"></p>
+      </section>
       <section class="panel"><h2>Lyric style</h2>
         <label class="font-label">Font<select id="font"><option value="rounded">Rounded bold</option><option value="sans">Sans serif bold</option><option value="condensed">Condensed bold</option><option value="serif">Serif bold</option></select></label>
         <div class="color-controls"><label>Text color<input id="textColor" type="color" value="#ffffff"></label><label>Duet color<input id="duetColor" type="color" value="#ffffff"></label><label>Outline color<input id="outlineColor" type="color" value="#000000"></label></div>
@@ -35,7 +43,15 @@
       </div>
     </aside>
   </div>
+      <section id="preset-panel" popover="auto" role="dialog" aria-labelledby="preset-title"><div class="preset-panel-header"><h2 id="preset-title">Manage presets</h2><button id="preset-close" popovertarget="preset-panel" popovertargetaction="hide" aria-label="Close presets" title="Close presets"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+        <form id="preset-create-form" class="preset-create-form"><label class="font-label" for="preset-name">Save current settings as a new preset</label><div class="preset-create-row"><input id="preset-name" type="text" maxlength="80" placeholder="Preset name" autocomplete="off" required><button id="preset-save" type="submit">Save</button></div></form>
+        <div class="preset-library-heading"><h3>Saved presets</h3><label class="preset-import-label">Import preset<input id="preset-import" type="file" accept=".json,application/json" aria-label="Import preset JSON"></label></div>
+        <div id="preset-list" aria-label="Saved presets"></div>
+        <p id="preset-manager-status" class="hint" role="status" aria-live="polite"></p>
+      </section>
   <footer><span>Rendered with <a href="https://github.com/amll-dev/applemusic-like-lyrics" target="_blank" rel="noopener noreferrer">AMLL</a></span></footer>
 </main>
 <dialog id="compatibility-warning" aria-labelledby="compatibility-title" aria-describedby="compatibility-description"><h2 id="compatibility-title">This video may not export</h2><p id="compatibility-description">You can continue editing, but this source has export compatibility issues.</p><ul id="compatibility-reasons"></ul><div class="compatibility-actions"><button id="stay-source" autofocus>Cancel</button><button id="proceed-anyway">Proceed anyway</button></div></dialog>
+<dialog id="preset-switch-warning" aria-labelledby="preset-switch-title" aria-describedby="preset-switch-description"><h2 id="preset-switch-title">Replace modified settings?</h2><p id="preset-switch-description"></p><div class="compatibility-actions"><button id="preset-switch-cancel" autofocus>Cancel</button><button id="preset-switch-confirm">Switch preset</button></div></dialog>
+<dialog id="preset-action-dialog" aria-labelledby="preset-action-title" aria-describedby="preset-action-description"><h2 id="preset-action-title"></h2><p id="preset-action-description"></p><p id="preset-action-error" class="step-error" role="alert"></p><div class="compatibility-actions"><button id="preset-action-cancel" autofocus>Cancel</button><button id="preset-action-confirm"></button></div></dialog>
 </body></html>

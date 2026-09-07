@@ -1,3 +1,4 @@
+import { setupPresets } from './preset-controls';
 import { checkExportCompatibility } from './export-compatibility';
 import { exportVideo } from './browser-export';
 import { listStoredExports, deleteStoredExport } from './export-storage';
@@ -10,6 +11,7 @@ const stage = $('stage');
 
 async function main() {
   let settings: Settings = { ...defaults };
+  let presetControls: ReturnType<typeof setupPresets> | undefined;
   const lyrics = new Lyrics(stage, $('lyrics'), settings);
   const video = $<HTMLVideoElement>('video');
   let videoFile: File | undefined;
@@ -62,6 +64,7 @@ async function main() {
   const steps = ['source', 'settings', 'export'] as const;
   let currentStep = 0;
   function selectStep(index: number, focus = false) {
+    if (index !== 1) $('preset-panel').hidePopover();
     currentStep = index;
     steps.forEach((step, i) => {
       const selected = i === index;
@@ -147,6 +150,7 @@ async function main() {
       $('outlineWidth-value').textContent = settings.outlineWidth ? `${settings.outlineWidth}%` : 'Off';
       void lyrics.frame(video.currentTime * 1000, 0, true);
       showError('', 'settings');
+      presetControls?.changed();
     } catch (error) { showError(String(error), 'settings'); }
   }
   for (const key of Object.keys(defaults) as (keyof Settings)[]) {
@@ -156,6 +160,14 @@ async function main() {
     control.addEventListener('input', changeSettings);
   }
   changeSettings();
+  presetControls = setupPresets(() => settings, next => {
+    for (const key of Object.keys(defaults) as (keyof Settings)[]) {
+      const control = input(key === 'shade' ? 'shade-control' : key);
+      if (control.type === 'checkbox') control.checked = Boolean(next[key]);
+      else control.value = String(next[key]);
+    }
+    changeSettings();
+  });
   input('video-file').addEventListener('change', () => {
     const file = input('video-file').files?.[0];
     if (!file) return;
@@ -255,6 +267,7 @@ async function main() {
   const setBusy = (busy: boolean) => {
     exporting = busy;
     document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('aside input, aside select').forEach(el => { el.disabled = busy; });
+    presetControls?.setBusy(busy);
     $('cancel').hidden = !busy;
     input('seek').disabled = busy || !loaded;
     for (const id of ['play', 'rewind', 'forward']) $<HTMLButtonElement>(id).disabled = busy || !loaded;

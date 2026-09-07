@@ -1,3 +1,4 @@
+import { initializeCustomFont, requireCustomFont } from './font-runtime';
 import { ALL_FORMATS, BlobSource, StreamTarget, Conversion, EncodedAudioPacketSource, EncodedPacketSink, Input, Mp4OutputFormat, Output } from 'mediabunny';
 import { snapshotLyrics } from './lyric-snapshot';
 export { snapshotLyrics };
@@ -14,6 +15,10 @@ interface ExportOptions {
   name?: string;
 }
 export async function exportVideo(options: ExportOptions): Promise<StoredExport> {
+  if (options.settings.font === 'custom') {
+    await initializeCustomFont().catch(() => {});
+    requireCustomFont(options.settings.font);
+  }
   return writeStoredExport(options.name || 'karaoke.mp4', options.signal, stream => renderToFile(options, stream));
 }
 

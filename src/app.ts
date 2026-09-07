@@ -1,3 +1,6 @@
+import { deviceFontNames, bundledFamilies } from './font-catalog';
+import { setupDeviceFonts } from './device-fonts';
+import { fontLicenseURL, initializeCustomFont, customFontName, uploadCustomFont, removeCustomFont, requireCustomFont } from './font-runtime';
 import { initializeIcons, createIcon } from './icons';
 import { setupPresets } from './preset-controls';
 import { checkExportCompatibility } from './export-compatibility';
@@ -12,7 +15,14 @@ const stage = $('stage');
 
 async function main() {
   initializeIcons();
+  await setupDeviceFonts($('device-fonts'));
+  $<HTMLAnchorElement>('font-licenses').href = fontLicenseURL;
   let settings: Settings = { ...defaults };
+  let fontLoading = false;
+  let fontUploadBusy = false;
+  let fontError = '';
+  let fontRequest = 0;
+  let lastFont: Settings['font'] | undefined;
   let presetControls: ReturnType<typeof setupPresets> | undefined;
   const lyrics = new Lyrics(stage, $('lyrics'), settings);
   const video = $<HTMLVideoElement>('video');
@@ -129,12 +139,33 @@ async function main() {
         : 'Waiting for the video to load.');
       if (!ttmlFile) reasons.push('Load a valid TTML lyrics file in Source to render.');
     }
+    if (fontLoading || fontUploadBusy) reasons.push('Wait for the font to finish loading.');
+    if (fontError) reasons.push(fontError);
+    if (settings.font === 'custom' && !customFontName()) reasons.push('Upload a custom font in Settings or choose another font before rendering.');
     const message = reasons.join(' ');
     $('export-requirements').textContent = message;
     $('export-requirements').hidden = !message;
     $<HTMLButtonElement>('export').disabled = reasons.length > 0;
   };
   updateExport();
+  function updateFontControls() {
+    const custom = settings.font === 'custom';
+    $('font-license-hint').hidden = !bundledFamilies[settings.font];
+    $('custom-font-controls').hidden = !custom;
+    $('custom-font-name').textContent = customFontName() || 'Choose font';
+    $('custom-font-remove').hidden = !customFontName();
+    $<HTMLButtonElement>('custom-font-remove').disabled = exporting || fontUploadBusy;
+    input('custom-font-file').disabled = exporting || fontUploadBusy;
+    $('font-status').textContent = fontError || (fontLoading || fontUploadBusy ? 'Loading font…' : '');
+    updateExport();
+  }
+  async function refreshFont() {
+    const request = ++fontRequest;
+    fontLoading = true; fontError = ''; updateFontControls();
+    try { await lyrics.refreshFont(); }
+    catch (error) { if (request === fontRequest) fontError = String(error); }
+    finally { if (request === fontRequest) { fontLoading = false; updateFontControls(); } }
+  }
   const formatTime = (n: number) => `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, '0')}`;
   const readSettings = () => validateSettings(Object.fromEntries(Object.keys(defaults).map(key => {
     const control = input(key === 'shade' ? 'shade-control' : key);
@@ -146,6 +177,8 @@ async function main() {
     try {
       settings = readSettings();
       lyrics.configure(settings);
+      if (lastFont !== settings.font) { lastFont = settings.font; void refreshFont(); }
+      updateFontControls();
       for (const key of ['fontSize', 'bottom', 'height', 'shade', 'shadeHeight', 'shadeFadeStart'] as const) $(`${key}-value`).textContent = `${settings[key]}%`;
       $('lineSpacing-value').textContent = `${settings.lineSpacing.toFixed(2)}×`;
       $('horizontalMargin-value').textContent = `${settings.horizontalMargin}%`;
@@ -173,6 +206,33 @@ async function main() {
       else control.value = String(next[key]);
     }
     changeSettings();
+    const deviceName = deviceFontNames[next.font as keyof typeof deviceFontNames];
+    const option = Array.from($<HTMLSelectElement>('font').options).find(option => option.value === next.font);
+    if (deviceName && option?.disabled) {
+      $('preset-font-description').textContent = `This preset uses "${deviceName}", which is unavailable on this device. Install it on your system and reload this page, or choose another font in Settings. A fallback font is being used for now.`;
+      // Let any preset-switch confirmation close before opening this notice.
+      requestAnimationFrame(() => $<HTMLDialogElement>('preset-font-warning').showModal());
+    }
+  });
+  void initializeCustomFont().then(() => refreshFont()).catch(error => {
+    if (settings.font === 'custom') fontError = String(error);
+    updateFontControls();
+  });
+  input('custom-font-file').addEventListener('change', async () => {
+    const file = input('custom-font-file').files?.[0];
+    input('custom-font-file').value = '';
+    if (!file || exporting || fontUploadBusy) return;
+    fontUploadBusy = true; fontError = ''; updateFontControls();
+    try { await uploadCustomFont(file); await refreshFont(); }
+    catch (error) { fontError = String(error); }
+    finally { fontUploadBusy = false; updateFontControls(); }
+  });
+  $('custom-font-remove').addEventListener('click', async () => {
+    if (exporting || fontUploadBusy) return;
+    fontUploadBusy = true; fontError = ''; updateFontControls();
+    try { await removeCustomFont(); await refreshFont(); }
+    catch (error) { fontError = String(error); }
+    finally { fontUploadBusy = false; updateFontControls(); }
   });
   input('video-file').addEventListener('change', () => {
     const file = input('video-file').files?.[0];
@@ -278,14 +338,14 @@ async function main() {
     $('cancel').hidden = !busy;
     input('seek').disabled = busy || !loaded;
     for (const id of ['play', 'rewind', 'forward']) $<HTMLButtonElement>(id).disabled = busy || !loaded;
-    updateExport();
+    updateFontControls();
   };
   $('export').addEventListener('click', async () => {
-    if (!videoFile || !ttmlFile || exporting) return;
+    if (!videoFile || !ttmlFile || exporting || fontLoading || fontUploadBusy || fontError) return;
     showError('', 'export');
     exportController = new AbortController();
     try {
-      settings = readSettings(); setBusy(true); video.pause();
+      settings = readSettings(); requireCustomFont(settings.font); setBusy(true); video.pause();
       $('progress-area').hidden = false; $('status').textContent = 'Preparing render…';
       $<HTMLProgressElement>('progress').value = 0;
       await exportVideo({

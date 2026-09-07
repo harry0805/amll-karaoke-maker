@@ -23,7 +23,7 @@
     "typecheck": "tsc --noEmit",
     "test": "bun test",
     "setup:browser": "playwright install chromium",
-    "build": "bun build ./src/index.html --outdir dist --target browser --minify"
+    "build": "bun scripts/build.ts"
   },
   "patchedDependencies": {
     "@applemusic-like-lyrics/core@0.5.2": "patches/@applemusic-like-lyrics%2Fcore@0.5.2.patch"

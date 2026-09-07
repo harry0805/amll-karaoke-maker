@@ -1,9 +1,5 @@
-export const fonts = {
-  rounded: '"Arial Rounded MT Bold", "SF Pro Rounded", Arial, "PingFang SC", sans-serif',
-  sans: 'Arial, "Helvetica Neue", "PingFang SC", sans-serif',
-  condensed: 'Impact, "Arial Narrow", "PingFang SC", sans-serif',
-  serif: 'Georgia, "Times New Roman", "Songti SC", serif',
-} as const;
+import { fonts } from './font-catalog';
+export { fonts } from './font-catalog';
 export interface Settings {
   showLyricsBeforeStart: boolean;
   useDuetColors: boolean; shadeHeight: number; shadeFadeStart: number; duetOutlineColor: string; duetOutlineWidth: number;
@@ -14,7 +10,7 @@ export const defaults: Settings = {
   showLyricsBeforeStart: false,
   useDuetColors: false, shadeHeight: 34, shadeFadeStart: 15, duetOutlineColor: '#000000', duetOutlineWidth: 10,
   fontSize: 5, lineSpacing: 1, bottom: 0, horizontalMargin: 5, height: 25, offset: 0, shade: 70,
-  backgroundColor: '#000000', textColor: '#ffffff', duetColor: '#ffffff', font: 'rounded', outlineColor: '#000000', outlineWidth: 10,
+  backgroundColor: '#000000', textColor: '#ffffff', duetColor: '#ffffff', font: 'nunito', outlineColor: '#000000', outlineWidth: 10,
 };
 export function validateSettings(input: unknown): Settings {
   if (!input || typeof input !== 'object') throw new Error('Invalid export settings.');

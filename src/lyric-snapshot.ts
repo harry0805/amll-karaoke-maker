@@ -1,3 +1,4 @@
+import { getStageFontCSS } from './font-runtime';
 import { toSvg } from 'html-to-image';
 import { snapshotStyles } from './snapshot-styles';
 
@@ -50,7 +51,7 @@ export async function snapshotLyrics(stage: HTMLElement, fullTree = false): Prom
   }
   let uri: string;
   try {
-    uri = await toSvg(stage, { skipFonts: true, pixelRatio: 1, filter: node => !excluded.has(node),
+    uri = await toSvg(stage, { skipFonts: true, fontEmbedCSS: getStageFontCSS(stage), pixelRatio: 1, filter: node => !excluded.has(node),
       includeStyleProperties: fullTree ? undefined : snapshotStyles });
   } finally { for (const line of marked) delete line.dataset.snapshotOutline; }
   // Computed SVG filter URLs are absolute in Chromium. The filter definitions

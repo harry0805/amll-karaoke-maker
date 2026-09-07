@@ -1,3 +1,4 @@
+import { customFontName, loadLyricFont, lyricFontCSS, setStageFontCSS } from './font-runtime';
 import { backgroundGradient } from './background-gradient';
 import { DomLyricPlayer, type LyricLine } from '@applemusic-like-lyrics/core';
 import { parseTTML } from '@applemusic-like-lyrics/ttml';
@@ -34,6 +35,9 @@ export class Lyrics {
   player = new DomLyricPlayer();
   settings: Settings;
   private previous = -1;
+  private fontText = '';
+  private fontGeneration = 0;
+  private disposed = false;
   private videoTime = 0;
   private lineEnds = new WeakMap<object, number>();
   private outlineId = `lyric-outline-${crypto.randomUUID()}`;
@@ -85,13 +89,14 @@ export class Lyrics {
     this.configure(settings);
   }
   dispose() {
+    this.disposed = true;
+    this.fontGeneration++;
     this.resizeObserver.disconnect();
     cancelAnimationFrame(this.outlineFrame);
     this.player.dispose();
     this.outlineSVG.remove();
   }
   configure(settings: Settings) {
-    const fontChanged = this.settings.font !== settings.font;
     this.settings = settings;
     this.updateIntro();
     const container = this.stage.querySelector<HTMLElement>('#lyrics')!;
@@ -105,7 +110,6 @@ export class Lyrics {
     this.player.getElement().style.setProperty('--duet-color', settings.useDuetColors ? settings.duetColor : settings.textColor);
     container.style.fontFamily = fonts[settings.font];
     this.updateOutline();
-    if (fontChanged) this.player.rebuildLyricLines();
     this.stage.style.setProperty('--shade-background', backgroundGradient(settings));
     this.stage.style.setProperty('--shade-height', `${settings.shadeHeight}%`);
     void this.player.calcLayout(true, true);
@@ -132,8 +136,24 @@ export class Lyrics {
     this.duetOutlineFlood.setAttribute('flood-color', this.settings.useDuetColors ? this.settings.duetOutlineColor : this.settings.outlineColor);
     this.player.getElement().style.setProperty('--duet-outline-filter', duetRadius > 0 ? `url(#${this.duetOutlineId})` : 'none');
   }
+  async refreshFont() {
+    const generation = ++this.fontGeneration;
+    const font = this.settings.font;
+    await loadLyricFont(font, this.fontText);
+    const css = font === 'custom' && !customFontName() ? '' : await lyricFontCSS(font);
+    if (this.disposed || generation !== this.fontGeneration) return;
+    setStageFontCSS(this.stage, css);
+    await this.player.calcLayout(true, true);
+    if (this.disposed || generation !== this.fontGeneration) return;
+    // Recalculate word widths and masks even when the line box has not resized.
+    // Rebuilding the word elements loses their masks until a resize is delivered.
+    this.player.setWordFadeWidth(0.5);
+    await this.frame(this.videoTime, 0, true);
+  }
   async load(text: string) {
     const lines = parseLyrics(text);
+    this.fontText = lines.flatMap(line => [line.words.map(word => word.word).join(''), line.translatedLyric, line.romanLyric]).join(' ');
+    await this.refreshFont();
     this.player.setLyricLines(lines, 0);
     // AMLL may extend a line to match background vocals or transitions. Hide
     // at its own final sung word, falling back to line timing for empty lines.

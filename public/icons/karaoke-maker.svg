@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Karaoke Maker</title>
+  <desc id="desc">An ivory microphone and two lyric bars with peach karaoke progress on a coral background.</desc>
+  <path fill="#F54B42" d="M0 0h1024v1024H0z"/>
+  <g fill="#FAF6EC">
+    <path d="M480 204C514 160 562 134 618 134c90 0 162 73 162 164 0 45-19 87-56 117-94-31-197-119-244-211Z"/>
+    <path d="M463 226c-24 42-27 91-10 130L126 748c-26 31-23 69 5 96s69 28 96-3l359-372c42 3 83-12 115-37-98-34-193-117-238-206Z"/>
+    <rect x="534" y="567" width="388" height="82" rx="41"/>
+    <rect x="534" y="688" width="388" height="82" rx="41"/>
+  </g>
+  <rect x="534" y="567" width="258" height="82" rx="41" fill="#F8BE83"/>
+</svg>

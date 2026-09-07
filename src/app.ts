@@ -1,3 +1,4 @@
+import { checkExportCompatibility } from './export-compatibility';
 import { exportVideo } from './browser-export';
 import { listStoredExports, deleteStoredExport } from './export-storage';
 import { Lyrics } from './lyrics';
@@ -12,6 +13,10 @@ async function main() {
   const lyrics = new Lyrics(stage, $('lyrics'), settings);
   const video = $<HTMLVideoElement>('video');
   let videoFile: File | undefined;
+  let compatibility: Promise<void> = Promise.resolve();
+  let compatibilityWarnings: string[] = [];
+  let compatibilityAccepted = false;
+  let pendingStep = 1;
   let ttmlFile: File | undefined;
   let objectURL = '';
   let loaded = false;
@@ -20,7 +25,10 @@ async function main() {
   const downloadURLs: string[] = [];
   const exportPreview = $<HTMLCanvasElement>("export-preview");
   let lyricGeneration = 0;
-  const showError = (message = '') => { $('error').textContent = message; $('error').hidden = !message; };
+  const showError = (message = '', step: 'source' | 'settings' | 'export' = 'source') => {
+    const element = $(step === 'export' ? 'error' : step + '-error');
+    element.textContent = message; element.hidden = !message;
+  };
   async function refreshSavedExports() {
     const exports = await listStoredExports();
     for (const url of downloadURLs) URL.revokeObjectURL(url);
@@ -28,21 +36,100 @@ async function main() {
     const list = $('saved-exports'); list.replaceChildren();
     for (const item of exports) {
       const row = document.createElement('div'); row.className = 'saved-export';
+      const details = document.createElement('div'); details.className = 'saved-details';
+      const name = document.createElement('div'); name.className = 'saved-name'; name.textContent = item.name; name.title = item.name;
+      const metadata = document.createElement('div'); metadata.className = 'saved-metadata';
+      const size = item.file.size < 1024 ** 2 ? Math.max(1, Math.round(item.file.size / 1024)) + ' KB' : (item.file.size / 1024 ** 2).toFixed(1) + ' MB';
+      metadata.textContent = size + ' · ' + new Date(item.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      details.append(name, metadata);
+      const actions = document.createElement('div'); actions.className = 'saved-file-actions';
       const link = document.createElement('a');
       link.href = URL.createObjectURL(item.file); downloadURLs.push(link.href);
-      link.download = item.name; link.textContent = `${item.name} · ${(item.file.size / 1024 ** 2).toFixed(1)} MB`;
+      link.download = item.name; link.textContent = 'Download'; link.setAttribute('aria-label', `Download ${item.name}`);
       const remove = document.createElement('button');
       remove.textContent = 'Delete'; remove.setAttribute('aria-label', `Delete saved export ${item.name}`);
       remove.addEventListener('click', async () => {
         remove.disabled = true;
         try { await deleteStoredExport(item.id); await refreshSavedExports(); }
-        catch (error) { showError(String(error)); remove.disabled = false; }
+        catch (error) { showError(String(error), 'export'); remove.disabled = false; }
       });
-      row.append(link, remove); list.append(row);
+      actions.append(link, remove); row.append(details, actions); list.append(row);
     }
-    $('saved-area').hidden = !exports.length;
+    $('saved-empty').hidden = exports.length > 0;
+    $('saved-count').textContent = String(exports.length);
+    $('saved-count').hidden = !exports.length;
   }
-  const updateExport = () => { $<HTMLButtonElement>('export').disabled = !videoFile || !ttmlFile || !loaded || exporting; };
+  const steps = ['source', 'settings', 'export'] as const;
+  let currentStep = 0;
+  function selectStep(index: number, focus = false) {
+    currentStep = index;
+    steps.forEach((step, i) => {
+      const selected = i === index;
+      const tab = $('tab-' + step);
+      tab.setAttribute('aria-selected', String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+      $('step-' + step).hidden = !selected;
+      if (selected && focus) tab.focus();
+    });
+    $('next-step').hidden = index === 2;
+    document.querySelector<HTMLElement>('.step-actions')!.hidden = index === 2;
+    $('next-step').textContent = index === 0 ? 'Next: Settings →' : 'Next: Export →';
+    document.querySelector('.step-scroll')!.scrollTop = 0;
+  }
+  async function requestStep(index: number, focus = false) {
+    if (index === 0) { selectStep(index, focus); return; }
+    const file = videoFile;
+    await compatibility;
+    if (file !== videoFile) return;
+    if (compatibilityWarnings.length && !compatibilityAccepted) {
+      pendingStep = index;
+      selectStep(0);
+      $<HTMLDialogElement>('compatibility-warning').showModal();
+      return;
+    }
+    selectStep(index, focus);
+  }
+  $('proceed-anyway').addEventListener('click', () => {
+    compatibilityAccepted = true;
+    $<HTMLDialogElement>('compatibility-warning').close();
+    selectStep(pendingStep, true);
+  });
+  $('compatibility-warning').addEventListener('close', () => {
+    if (!compatibilityAccepted) $('tab-source').focus();
+  });
+  $('stay-source').addEventListener('click', () => {
+    $<HTMLDialogElement>('compatibility-warning').close();
+    $('tab-source').focus();
+  });
+  steps.forEach((step, index) => {
+    $('tab-' + step).addEventListener('click', () => void requestStep(index));
+    $('tab-' + step).addEventListener('keydown', event => {
+      let target: number;
+      if (event.key === 'ArrowRight') target = (index + 1) % steps.length;
+      else if (event.key === 'ArrowLeft') target = (index + steps.length - 1) % steps.length;
+      else if (event.key === 'Home') target = 0;
+      else if (event.key === 'End') target = steps.length - 1;
+      else return;
+      event.preventDefault(); void requestStep(target, true);
+    });
+  });
+  $('next-step').addEventListener('click', () => void requestStep(Math.min(2, currentStep + 1), true));
+  const updateExport = () => {
+    const reasons: string[] = [];
+    if (exporting) reasons.push('Export is already running.');
+    else {
+      if (!videoFile) reasons.push('Load a video in Source to export.');
+      else if (!loaded) reasons.push(video.error || video.readyState >= 1
+        ? 'The video could not be loaded. Choose a supported video in Source.'
+        : 'Waiting for the video to load.');
+      if (!ttmlFile) reasons.push('Load a valid TTML lyrics file in Source to export.');
+    }
+    const message = reasons.join(' ');
+    $('export-requirements').textContent = message;
+    $('export-requirements').hidden = !message;
+    $<HTMLButtonElement>('export').disabled = reasons.length > 0;
+  };
+  updateExport();
   const formatTime = (n: number) => `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, '0')}`;
   const readSettings = () => validateSettings(Object.fromEntries(Object.keys(defaults).map(key => {
     const control = input(key === 'shade' ? 'shade-control' : key);
@@ -59,7 +146,8 @@ async function main() {
       $('horizontalMargin-value').textContent = `${settings.horizontalMargin}% each side`;
       $('outlineWidth-value').textContent = settings.outlineWidth ? `${settings.outlineWidth}%` : 'Off';
       void lyrics.frame(video.currentTime * 1000, 0, true);
-    } catch (error) { showError(String(error)); }
+      showError('', 'settings');
+    } catch (error) { showError(String(error), 'settings'); }
   }
   for (const key of Object.keys(defaults) as (keyof Settings)[]) {
     const control = input(key === 'shade' ? 'shade-control' : key);
@@ -72,16 +160,33 @@ async function main() {
     const file = input('video-file').files?.[0];
     if (!file) return;
     video.pause(); loaded = false; videoFile = file;
+    compatibilityAccepted = false; compatibilityWarnings = [];
+    $("source-compatibility-issues").replaceChildren();
+    $("source-compatibility-issues").hidden = true;
+    $<HTMLDialogElement>('compatibility-warning').close();
+    $('compatibility-status').textContent = 'Checking export compatibility…';
+    compatibility = checkExportCompatibility(file).catch(() => ['Export compatibility could not be checked. This file may not be exportable.']).then(warnings => {
+      if (videoFile !== file) return;
+      compatibilityWarnings = warnings;
+      $('compatibility-status').textContent = '';
+      const sourceIssues = $('source-compatibility-issues');
+      sourceIssues.replaceChildren(); sourceIssues.hidden = !warnings.length;
+      const list = $('compatibility-reasons'); list.replaceChildren();
+      for (const warning of warnings) {
+        const item = document.createElement('li'); item.textContent = warning; list.append(item);
+        sourceIssues.append(item.cloneNode(true));
+      }
+    });
     if (objectURL) URL.revokeObjectURL(objectURL);
     objectURL = URL.createObjectURL(file); video.src = objectURL;
     $('video-name').textContent = file.name; showError(); updateExport();
   });
   video.addEventListener('loadedmetadata', () => {
-    if (!Number.isFinite(video.duration) || !video.videoWidth) { showError('Cannot determine the video duration. Try an MP4 video.'); return; }
+    if (!Number.isFinite(video.duration) || !video.videoWidth) { updateExport(); showError('Cannot determine the video duration. Try an MP4 video.'); return; }
     loaded = true; $('empty').hidden = true;
     stage.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
     input('seek').max = String(video.duration); input('seek').disabled = false;
-    $<HTMLButtonElement>('play').disabled = false;
+    for (const id of ['play', 'rewind', 'forward']) $<HTMLButtonElement>(id).disabled = exporting;
     $('media-info').textContent = `${video.videoWidth} × ${video.videoHeight} · ${formatTime(video.duration)}`;
     void lyrics.player.calcLayout(true, true); updateExport();
   });
@@ -103,9 +208,40 @@ async function main() {
     } catch (error) { if (generation === lyricGeneration) { $('ttml-name').textContent = 'Choose another TTML'; showError(String(error)); } }
     updateExport();
   });
-  $('play').addEventListener('click', async () => { try { if (video.paused) await video.play(); else video.pause(); } catch (error) { showError(String(error)); } });
-  video.addEventListener('play', () => { $('play').textContent = 'Pause'; });
-  video.addEventListener('pause', () => { $('play').textContent = 'Play'; });
+  async function togglePlayback() {
+    if (!loaded || exporting) return;
+    try { if (video.paused) await video.play(); else video.pause(); }
+    catch (error) { showError(String(error)); }
+  }
+  function updatePlaybackButton() {
+    const playing = !video.paused;
+    const label = playing ? 'Pause' : 'Play';
+    $('play').setAttribute('aria-label', label);
+    $('play').title = label + ' (Space)';
+    $('play').querySelector('.play-symbol')!.toggleAttribute('hidden', playing);
+    $('play').querySelector('.pause-symbol')!.toggleAttribute('hidden', !playing);
+  }
+  function seekBy(seconds: number) {
+    if (!loaded || exporting || !Number.isFinite(video.duration)) return;
+    video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime + seconds));
+  }
+  $('play').addEventListener('click', () => void togglePlayback());
+  $('rewind').addEventListener('click', () => seekBy(-10));
+  $('forward').addEventListener('click', () => seekBy(10));
+  video.addEventListener('play', updatePlaybackButton);
+  video.addEventListener('pause', updatePlaybackButton);
+  video.addEventListener('ended', updatePlaybackButton);
+  document.addEventListener('keydown', event => {
+    const target = event.target;
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !loaded || exporting) return;
+    if (target instanceof HTMLElement && target.closest('input, select, textarea, button, a, [contenteditable]:not([contenteditable="false"]), [role="tab"], [role="dialog"], dialog')) return;
+    if (event.code === 'Space') {
+      event.preventDefault();
+      if (!event.repeat) void togglePlayback();
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+      event.preventDefault(); seekBy(event.key === 'ArrowLeft' ? -5 : 5);
+    }
+  });
   input('seek').addEventListener('input', () => { video.currentTime = Number(input('seek').value); });
   video.addEventListener('seeked', () => { void lyrics.frame(video.currentTime * 1000, 0, true); });
   let previous = performance.now();
@@ -121,12 +257,12 @@ async function main() {
     document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('aside input, aside select').forEach(el => { el.disabled = busy; });
     $('cancel').hidden = !busy;
     input('seek').disabled = busy || !loaded;
-    $<HTMLButtonElement>('play').disabled = busy || !loaded;
+    for (const id of ['play', 'rewind', 'forward']) $<HTMLButtonElement>(id).disabled = busy || !loaded;
     updateExport();
   };
   $('export').addEventListener('click', async () => {
     if (!videoFile || !ttmlFile || exporting) return;
-    showError();
+    showError('', 'export');
     exportController = new AbortController();
     try {
       settings = readSettings(); setBusy(true); video.pause();
@@ -149,7 +285,7 @@ async function main() {
       $('status').textContent = 'Export saved on this device';
     } catch (error) {
       if (exportController.signal.aborted) $('status').textContent = 'Export cancelled';
-      else { showError(String(error)); $('status').textContent = 'Export failed'; }
+      else { showError(String(error), 'export'); $('status').textContent = 'Export failed'; }
     } finally {
       exportController = undefined; exportPreview.hidden = true;
       exportPreview.width = exportPreview.height = 0;
@@ -163,6 +299,6 @@ async function main() {
     if (exporting) { event.preventDefault(); event.returnValue = ''; }
   });
   // OPFS failures are reported here and on export, never replaced with RAM storage.
-  void refreshSavedExports().catch(error => showError(String(error)));
+  void refreshSavedExports().catch(error => showError(String(error), 'export'));
 }
-void main().catch(error => { console.error(error); const el = document.getElementById('error'); if (el) { el.textContent = String(error); el.hidden = false; } });
+void main().catch(error => { console.error(error); const el = document.getElementById('source-error'); if (el) { el.textContent = String(error); el.hidden = false; } });

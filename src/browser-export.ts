@@ -1,24 +1,11 @@
 import { ALL_FORMATS, BlobSource, StreamTarget, Conversion, EncodedAudioPacketSource, EncodedPacketSink, Input, Mp4OutputFormat, Output } from 'mediabunny';
-import { toSvg } from 'html-to-image';
+import { snapshotLyrics } from './lyric-snapshot';
+export { snapshotLyrics };
 import { Lyrics } from './lyrics';
 import type { Settings } from './settings';
 import { writeStoredExport, type StoredExport } from './export-storage';
 
-export interface ExportProgress { frames: number; time: number; duration: number; finishing: boolean }
-
-/** Snapshot computed AMLL styles, including the current Web Animation values. */
-export async function snapshotLyrics(stage: HTMLElement): Promise<HTMLImageElement> {
-  const uri = await toSvg(stage, { skipFonts: true, pixelRatio: 1 });
-  // Computed SVG filter URLs are absolute in Chromium. The filter definitions
-  // travel inside the snapshot, so resolve them inside that SVG image too.
-  const xml = decodeURIComponent(uri.slice(uri.indexOf(',') + 1))
-    .replace(/url\(&quot;[^#]*#([^&]+)&quot;\)/g, 'url(#$1)')
-    .replace(/url\("[^#"]*#([^"\)]+)"\)/g, 'url(#$1)');
-  const image = new Image();
-  image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`;
-  await image.decode();
-  return image;
-}
+export interface ExportProgress { frames: number; time: number; duration: number; finishing: boolean; fps: number }
 
 /** Browser-only, frame-timed export. No uploads, screen capture or real-time recording. */
 interface ExportOptions {
@@ -95,6 +82,8 @@ async function renderToFile(options: ExportOptions, stream: FileSystemWritableFi
     const previewContext = preview.getContext('2d', { alpha: false })!;
     let previous = 0;
     let frames = 0;
+    let renderStarted = 0;
+    const renderFps = () => frames * 1000 / Math.max(1, performance.now() - renderStarted);
     conversion = await Conversion.init({
       input, output, composable: true, tracks: 'primary', trim: { start: 0, end: duration },
       video: {
@@ -111,7 +100,7 @@ async function renderToFile(options: ExportOptions, stream: FileSystemWritableFi
           context.drawImage(overlay, 0, 0);
           previewContext.drawImage(canvas!, 0, 0);
           previous = sample.timestamp;
-          onProgress({ frames: ++frames, time: sample.timestamp, duration, finishing: false });
+          onProgress({ frames: ++frames, time: sample.timestamp, duration, finishing: false, fps: renderFps() });
           return canvas!;
         },
       },
@@ -123,9 +112,10 @@ async function renderToFile(options: ExportOptions, stream: FileSystemWritableFi
     }
     signal.throwIfAborted();
     conversion.onProgress = progress => {
-      if (progress === 1) onProgress({ frames, time: duration, duration, finishing: true });
+      if (progress === 1) onProgress({ frames, time: duration, duration, finishing: true, fps: renderFps() });
     };
     await output.start();
+    renderStarted = performance.now();
     await conversion.execute();
     await copyAudioUntil(Infinity);
     audioSource?.close();

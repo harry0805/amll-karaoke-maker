@@ -45,7 +45,9 @@ async function main() {
   const updateExport = () => { $<HTMLButtonElement>('export').disabled = !videoFile || !ttmlFile || !loaded || exporting; };
   const formatTime = (n: number) => `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, '0')}`;
   const readSettings = () => validateSettings(Object.fromEntries(Object.keys(defaults).map(key => {
-    const value = input(key === 'shade' ? 'shade-control' : key).value;
+    const control = input(key === 'shade' ? 'shade-control' : key);
+    if (control.type === 'checkbox') return [key, control.checked];
+    const value = control.value;
     return [key, ['textColor', 'duetColor', 'font', 'outlineColor'].includes(key) ? value : Number(value)];
   })));
   function changeSettings() {
@@ -61,7 +63,8 @@ async function main() {
   }
   for (const key of Object.keys(defaults) as (keyof Settings)[]) {
     const control = input(key === 'shade' ? 'shade-control' : key);
-    control.value = String(defaults[key]);
+    if (control.type === 'checkbox') control.checked = Boolean(defaults[key]);
+    else control.value = String(defaults[key]);
     control.addEventListener('input', changeSettings);
   }
   changeSettings();
@@ -133,10 +136,10 @@ async function main() {
         video: videoFile, ttml: await ttmlFile.text(), settings,
         name: videoFile.name.replace(/\.[^.]+$/, '') + '-karaoke.mp4',
         preview: exportPreview, signal: exportController.signal,
-        onProgress: ({ frames, time, duration, finishing }) => {
+        onProgress: ({ frames, time, duration, finishing, fps }) => {
           exportPreview.hidden = false;
           $<HTMLProgressElement>('progress').value = Math.min(.99, time / duration);
-          $('status').textContent = finishing ? 'Finishing MP4…' : 'Rendering ' + Math.round(time / duration * 100) + '% · ' + frames + ' frames';
+          $('status').textContent = finishing ? 'Finishing MP4…' : 'Rendering ' + Math.round(time / duration * 100) + '% · ' + frames + ' frames · ' + fps.toFixed(1) + ' fps';
           input('seek').value = String(time);
           $('time').textContent = formatTime(time) + ' / ' + formatTime(duration);
         },

@@ -25,6 +25,8 @@ Publish the contents of `dist/` to any static HTTPS host. No Bun runtime, upload
 
 Keep the tab open and visible during export. Settings and playback controls are locked until export finishes or is cancelled. The original preview position returns afterward. Reloading interrupts a running export. Completed exports reappear after reload; interrupted files are cleaned up when the app next opens.
 
+The "Show lyrics before start" toggle defaults to off. With a positive timing offset, the lyric display stays hidden until TTML time zero, then fades in over 250 ms. Normal prelude dots still appear before the first sung line. Enabling the toggle keeps the display visible during the offset lead-in. Preview and export use the same media-time fade, including after seeking.
+
 The default style is rounded bold white text with a black 10% outline. Text size defaults to 5%, bottom margin to 0%, horizontal margin to 4% on each side, lyric area to 35%, background shade to 40%, and timing offset to 0 ms. The separate Duet color picker also defaults to white and applies to lines AMLL marks as duet. Background vocals follow their singer's color. Font presets are rounded bold, sans serif bold, condensed bold, and serif bold, using locally installed fonts with fallbacks. Set outline thickness to zero to turn it off. The outline scales with the text in both preview and export. An SVG filter expands the rendered line alpha after AMLL applies its word masks, avoiding clipped text strokes at word boundaries. Dimmed words still have a dimmer outline, and very thick outlines can soften fine letter details.
 
 Each line fades out over 250 ms after its final timed word ends. The fade uses media time in both preview and export. Background vocals use their own final-word time. Seeking backward restores the lyrics.
@@ -41,7 +43,7 @@ The default lyric box occupies the bottom 35% with room for nearby lines. Long l
 - The selected source File stays on its original disk and uses an 8 MiB read cache. Audio copying runs at most one second ahead of the current video frame. Decoders, encoders, current canvas frames, lyric snapshots, and MP4 sample metadata still need working memory. No raw-frame image sequence or full audio copy is collected.
 - Saved files live under the site's OPFS directory `karaoke-exports-v1`. Each render has a unique file and a Web Lock so cleanup cannot remove another tab's active render. A small JSON completion record distinguishes finished files from interrupted ones. Cancelled, failed, and interrupted files are removed; completed files have explicit Delete buttons.
 - OPFS uses browser storage quota. A full disk/quota produces an error and cleans up the partial file, with no RAM fallback. Site-data clearing or browser eviction can remove saved exports, so download files you want to keep. Exports are separate for each site origin, including different localhost ports.
-- Export is frame-timed, not real-time screen recording, so it can run faster or slower than playback without deliberately skipping frames. DOM lyric snapshots are still a potential bottleneck. There are no worker, caching, or other large performance changes in this version.
+- Export is frame-timed, not real-time screen recording, so it can run faster or slower than playback without deliberately skipping frames. Lyric snapshots and outline rasterization remain the main rendering costs. See the performance measurements below.
 - Font availability affects typography. No transparent-overlay-only export is included. TTML is limited to 10 MiB.
 
 ## Checks
@@ -66,7 +68,9 @@ The OPFS test writes a 32 MiB file from a reused 1 MiB block, then checks active
 
 - `index.ts`: development asset server, plus a test-only render page.
 - `src/app.ts`: file selection, preview, settings, browser export UI.
-- `src/browser-export.ts`: local decoding, lyric snapshots, canvas composition and encoding to a disk stream.
+- `src/browser-export.ts`: local decoding, canvas composition and encoding to a disk stream.
+- `src/lyric-snapshot.ts`: visible-group selection, CSS snapshots and outline paint bounds.
+- `src/snapshot-styles.ts`: paint/layout properties copied into snapshots.
 - `src/export-storage.ts`: OPFS writes, completion records, recovery, cleanup and saved downloads.
 - `src/lyrics.ts`: TTML compatibility and AMLL media-clock rendering shared by preview and export.
 - `tests/render-entry.ts`: isolated renderer entry for automated tests, excluded from the static build.
@@ -84,3 +88,19 @@ Upcoming lyrics have no fixed line-count limit. The lyric box clips them at its 
 Word masks have vertical padding so compact line spacing does not clip descenders or floating letters. The local AMLL patch measures vertical padding separately from horizontal padding to preserve word-fill timing. Per-line paint clipping is disabled; the outer lyric viewport still clips the scrolling content. Run `bun run tests/glyph-smoke.ts` for the compact-spacing glyph check.
 
 Interlude dots use the same outline color and thickness as the lyrics. The AMLL patch keeps their interval anchored to the actual gap and their animation clock synchronized with playback time, including seeks. During a gap the dots align inside the lyric viewport before the upcoming line. Run `bun run tests/interlude-smoke.ts` to verify forward/backward seeks, outline off, and normal-playback parity.
+
+## Rendering performance
+
+Exports snapshot only lyric groups near the visible box. AMLL still keeps upcoming lines ready in the live renderer, so they can scroll into view. Snapshotting copies a list of paint/layout CSS properties instead of every computed property. The outline uses the same SVG dilation and color, but its filter region is restricted to text bounds with extra space for emphasis, glow, and glyph movement. These changes do not reduce resolution or skip frames. Export progress includes average rendering fps.
+
+On this machine, a 1920×1080 snapshot benchmark with a supplied TTML containing 777 DOM elements improved from 1.8 to 11.0 fps. Average DOM-to-SVG snapshot time fell from 447 to 34 ms; painting fell from 104 to 56 ms. A complete 90-frame 1080p export, including encoding and OPFS writes, took 9.4 seconds, about 9.5 fps. These are short-sample measurements, not a guarantee for every song or device. Thick outlines and large text still cost rasterization time.
+
+```sh
+# Original synthetic long-song fixture by default. Set TTML_PATH to test your own file.
+bun run tests/snapshot-benchmark.ts
+FULL_TREE=1 bun run tests/snapshot-benchmark.ts
+bun run tests/snapshot-parity.ts
+bun run tests/export-benchmark.ts
+```
+
+The parity test compares decoded pixels against the original full-tree/full-style snapshot in separate browser documents. It covers 45 timing/style combinations, including continuous scroll steps and compact rows. Keep `src/snapshot-styles.ts` in sync when adding rendering styles. AMLL's `will-change` properties affect compositing and must remain in the list. The reference mode is for fresh test documents because html-to-image caches its property list for each document.

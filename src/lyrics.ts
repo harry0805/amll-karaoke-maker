@@ -33,6 +33,7 @@ export class Lyrics {
   player = new DomLyricPlayer();
   settings: Settings;
   private previous = -1;
+  private videoTime = 0;
   private lineEnds = new WeakMap<object, number>();
   private outlineId = `lyric-outline-${crypto.randomUUID()}`;
   private outlineDilate: SVGFEMorphologyElement;
@@ -40,7 +41,7 @@ export class Lyrics {
   private outlineSVG: SVGSVGElement;
   private resizeObserver: ResizeObserver;
   private outlineFrame = 0;
-  constructor(private stage: HTMLElement, container: HTMLElement, settings: Settings) {
+  constructor(private stage: HTMLElement, private container: HTMLElement, settings: Settings) {
     this.settings = settings;
     // Apply the outline after the words have been masked and animated. A text
     // stroke on the spans themselves is clipped by their individual masks.
@@ -83,6 +84,7 @@ export class Lyrics {
   configure(settings: Settings) {
     const fontChanged = this.settings.font !== settings.font;
     this.settings = settings;
+    this.updateIntro();
     const container = this.stage.querySelector<HTMLElement>('#lyrics')!;
     container.style.height = `${settings.height}%`;
     container.style.bottom = `${settings.bottom}%`;
@@ -97,6 +99,14 @@ export class Lyrics {
     if (fontChanged) this.player.rebuildLyricLines();
     this.stage.style.setProperty('--shade', String(settings.shade / 100));
     void this.player.calcLayout(true, true);
+  }
+  private updateIntro() {
+    // Gate only the offset lead-in, not the gap before the first sung line.
+    // Keep the unclamped time so a delayed timeline can remain hidden.
+    const time = this.videoTime - this.settings.offset;
+    const progress = this.settings.showLyricsBeforeStart || this.settings.offset <= 0
+      ? 1 : Math.min(1, Math.max(0, time / LINE_FADE_MS));
+    this.container.style.opacity = String(progress * progress * (3 - 2 * progress));
   }
   private updateOutline() {
     // Build and measure upcoming lines well below the clipped lyric viewport,
@@ -137,6 +147,8 @@ export class Lyrics {
     return lines;
   }
   async frame(videoTime: number, delta: number, seek = false) {
+    this.videoTime = videoTime;
+    this.updateIntro();
     const time = Math.max(0, videoTime - this.settings.offset);
     const jump = seek || this.previous < 0 || time < this.previous || Math.abs(time - this.previous) > 250;
     this.player.setCurrentTime(time, jump);

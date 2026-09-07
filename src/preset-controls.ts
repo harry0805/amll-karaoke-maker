@@ -1,3 +1,4 @@
+import { createIcon, type IconName } from './icons';
 import { defaults, type Settings } from './settings';
 import { parseStoredPresets, serializeStoredPresets, presetLabel, restoreCurrentSettings, persistCurrentSettings, PRESETS_KEY, MAX_PRESETS, mergePresets, parsePresets, presetName, serializePresets, type Preset } from './presets';
 
@@ -39,7 +40,7 @@ export function setupPresets(getSettings: () => Settings, applySettings: (settin
     pendingAction = callback;
     $('preset-action-title').textContent = label === 'Reset changes' ? 'Reset modified settings?' : label === 'Delete preset' ? 'Delete preset?' : 'Update preset?';
     $('preset-action-description').textContent = question;
-    $('preset-action-confirm').textContent = label;
+    $('preset-action-confirm').replaceChildren(createIcon(label === 'Delete preset' ? 'trash-2' : label === 'Reset changes' ? 'rotate-ccw' : 'save'), label);
     $('preset-action-error').textContent = '';
     $('preset-action-confirm').classList.toggle('danger', label === 'Delete preset');
     reopenManager = panel.matches(':popover-open');
@@ -107,7 +108,9 @@ export function setupPresets(getSettings: () => Settings, applySettings: (settin
       const title = document.createElement('strong'); title.textContent = preset.name; heading.append(title);
       const actions = document.createElement('div'); actions.className = 'preset-row-actions';
       const action = (label: string, callback: () => void) => {
-        const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
+        const button = document.createElement('button'); button.type = 'button';
+        const actionIcons: Record<string, IconName> = { Rename: 'pencil', Update: 'save', Export: 'download', Delete: 'trash-2' };
+        button.append(createIcon(actionIcons[label]!), label);
         button.setAttribute('aria-label', label + ' ' + preset.name);
         button.addEventListener('click', () => { if (!busy) safely(callback); });
         actions.append(button); return button;
@@ -120,8 +123,8 @@ export function setupPresets(getSettings: () => Settings, applySettings: (settin
           const headingHeight = heading.getBoundingClientRect().height;
           field.style.height = headingHeight + 'px';
           title.replaceWith(field);
-          const save = document.createElement('button'); save.textContent = 'Save name'; save.type = 'button';
-          const cancel = document.createElement('button'); cancel.textContent = 'Cancel'; cancel.type = 'button';
+          const save = document.createElement('button'); save.append(createIcon('check'), 'Save name'); save.type = 'button';
+          const cancel = document.createElement('button'); cancel.append(createIcon('x'), 'Cancel'); cancel.type = 'button';
           const restore = () => {
             field.replaceWith(title); actions.replaceChildren(...previousActions);
             (previousActions[0] as HTMLButtonElement)?.focus();

@@ -1,3 +1,4 @@
+import { initializeIcons, createIcon } from './icons';
 import { setupPresets } from './preset-controls';
 import { checkExportCompatibility } from './export-compatibility';
 import { exportVideo } from './browser-export';
@@ -10,6 +11,7 @@ const input = (id: string) => $<HTMLInputElement>(id);
 const stage = $('stage');
 
 async function main() {
+  initializeIcons();
   let settings: Settings = { ...defaults };
   let presetControls: ReturnType<typeof setupPresets> | undefined;
   const lyrics = new Lyrics(stage, $('lyrics'), settings);
@@ -47,9 +49,9 @@ async function main() {
       const actions = document.createElement('div'); actions.className = 'saved-file-actions';
       const link = document.createElement('a');
       link.href = URL.createObjectURL(item.file); downloadURLs.push(link.href);
-      link.download = item.name; link.textContent = 'Download'; link.setAttribute('aria-label', `Download ${item.name}`);
+      link.download = item.name; link.append(createIcon('download'), 'Download'); link.setAttribute('aria-label', `Download ${item.name}`);
       const remove = document.createElement('button');
-      remove.textContent = 'Delete'; remove.setAttribute('aria-label', `Delete saved export ${item.name}`);
+      remove.append(createIcon('trash-2'), 'Delete'); remove.setAttribute('aria-label', `Delete saved export ${item.name}`);
       remove.addEventListener('click', async () => {
         remove.disabled = true;
         try { await deleteStoredExport(item.id); await refreshSavedExports(); }
@@ -76,7 +78,7 @@ async function main() {
     });
     $('next-step').hidden = index === 2;
     document.querySelector<HTMLElement>('.step-actions')!.hidden = index === 2;
-    $('next-step').textContent = index === 0 ? 'Next: Settings →' : 'Next: Export →';
+    $('next-step-label').textContent = index === 0 ? 'Next: Settings' : 'Next: Export';
     document.querySelector('.step-scroll')!.scrollTop = 0;
   }
   async function requestStep(index: number, focus = false) {
@@ -197,6 +199,7 @@ async function main() {
     if (!Number.isFinite(video.duration) || !video.videoWidth) { updateExport(); showError('Cannot determine the video duration. Try an MP4 video.'); return; }
     loaded = true; $('empty').hidden = true;
     stage.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+    stage.closest<HTMLElement>('.preview-frame')!.style.setProperty('--video-aspect', String(video.videoWidth / video.videoHeight));
     input('seek').max = String(video.duration); input('seek').disabled = false;
     for (const id of ['play', 'rewind', 'forward']) $<HTMLButtonElement>(id).disabled = exporting;
     $('media-info').textContent = `${video.videoWidth} × ${video.videoHeight} · ${formatTime(video.duration)}`;

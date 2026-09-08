@@ -1,0 +1,15 @@
+node_modules/
+dist/
+out/
+coverage/
+.cache/
+.renders/
+.wrangler/
+.agents/
+.codex/
+patches/
+public/fonts/
+bun.lock
+
+# Generated Svelte type-check files
+.svelte-check/

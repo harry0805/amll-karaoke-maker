@@ -4,14 +4,20 @@
   "type": "module",
   "private": true,
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@types/bun": "latest",
     "@typescript/native": "npm:typescript@^7.0.2",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-svelte": "^3.23.0",
+    "globals": "^17.12.0",
     "playwright": "^1.63.0",
     "prettier": "^3.9.6",
     "prettier-plugin-svelte": "^4.1.1",
     "svelte-check": "^4.7.6",
     "typescript": "~6",
+    "typescript-eslint": "^8.70.0",
     "vite": "^8.2.2",
     "wrangler": "^4.129.0"
   },
@@ -32,7 +38,11 @@
     "build": "bun scripts/build.ts",
     "preview": "wrangler dev",
     "deploy": "wrangler deploy",
-    "format:ui": "prettier --write src/*.svelte src/components/*.svelte src/studio.svelte.ts"
+    "format:ui": "prettier --write src/*.svelte src/components/*.svelte src/studio.svelte.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "patchedDependencies": {
     "@applemusic-like-lyrics/core@0.5.2": "patches/@applemusic-like-lyrics%2Fcore@0.5.2.patch"

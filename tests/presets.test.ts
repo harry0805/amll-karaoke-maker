@@ -1,37 +1,80 @@
 import { expect, test } from 'bun:test';
 import { defaults, appearanceSettings, applyAppearance } from '../src/settings';
-import { parsePresets, serializePresets, mergePresets, parseStoredPresets, serializeStoredPresets } from '../src/presets';
+import {
+  parsePresets,
+  serializePresets,
+  mergePresets,
+  parseStoredPresets,
+  serializeStoredPresets,
+} from '../src/presets';
 
 test('presets round-trip appearance and exclude source timing', () => {
-  const settings = { ...defaults, offset: 4200, showLyricsBeforeStart: true, font: 'serif' as const, duetColor: '#ffaa00', useDuetColors: true, duetOutlineColor: '#ff0088', duetOutlineWidth: 6, shadeHeight: 72, shade: 100, shadeFadeStart: 35, backgroundColor: '#123abc' };
+  const settings = {
+    ...defaults,
+    offset: 4200,
+    showLyricsBeforeStart: true,
+    font: 'serif' as const,
+    duetColor: '#ffaa00',
+    useDuetColors: true,
+    duetOutlineColor: '#ff0088',
+    duetOutlineWidth: 6,
+    shadeHeight: 72,
+    shade: 100,
+    shadeFadeStart: 35,
+    backgroundColor: '#123abc',
+  };
   const [preset] = parsePresets(serializePresets([{ name: 'Duet', settings }]));
   expect(preset!.name).toBe('Duet');
   expect(preset!.settings).toEqual(appearanceSettings(settings));
   expect(preset!.settings).not.toHaveProperty('offset');
   expect(preset!.settings).not.toHaveProperty('showLyricsBeforeStart');
-  expect(applyAppearance({ ...defaults, offset: 900, showLyricsBeforeStart: true }, preset!.settings)).toEqual({ ...settings, offset: 900 });
+  expect(
+    applyAppearance({ ...defaults, offset: 900, showLyricsBeforeStart: true }, preset!.settings),
+  ).toEqual({ ...settings, offset: 900 });
 });
 test('invalid imports are rejected as a whole', () => {
   const valid = JSON.parse(serializePresets([{ name: 'Valid', settings: defaults }]));
-  for (const data of [{ ...valid, version: 2 }, { ...valid, format: 'other' }, { ...valid, presets: [] }, { ...valid, presets: [...valid.presets, { name: 'Bad', settings: { ...defaults, offset: '10' } }] }, { ...valid, presets: [{ name: ' ', settings: defaults }] }]) expect(() => parsePresets(JSON.stringify(data))).toThrow();
+  for (const data of [
+    { ...valid, version: 2 },
+    { ...valid, format: 'other' },
+    { ...valid, presets: [] },
+    {
+      ...valid,
+      presets: [...valid.presets, { name: 'Bad', settings: { ...defaults, offset: '10' } }],
+    },
+    { ...valid, presets: [{ name: ' ', settings: defaults }] },
+  ])
+    expect(() => parsePresets(JSON.stringify(data))).toThrow();
   expect(() => parsePresets('x'.repeat(1024 * 1024 + 1))).toThrow();
 });
 test('imports preserve existing names and settings when names collide', () => {
   const existing = parsePresets(serializePresets([{ name: 'Duet', settings: defaults }]));
-  const incoming = parsePresets(serializePresets([{ name: 'duet', settings: { ...defaults, fontSize: 10 } }, { name: 'duet', settings: defaults }]));
+  const incoming = parsePresets(
+    serializePresets([
+      { name: 'duet', settings: { ...defaults, fontSize: 10 } },
+      { name: 'duet', settings: defaults },
+    ]),
+  );
   const merged = mergePresets(existing, incoming);
-  expect(merged.map(p => p.name)).toEqual(['Duet', 'duet', 'duet']);
+  expect(merged.map((p) => p.name)).toEqual(['Duet', 'duet', 'duet']);
   expect(merged[0]).toEqual(existing[0]);
   expect(merged[1]!.settings.fontSize).toBe(10);
   expect(existing).toHaveLength(1);
 });
 
 test('local IDs survive reloads and distinguish identical names', () => {
-  const presets = parsePresets(serializePresets([{ name: 'Same', settings: defaults }, { name: 'Same', settings: { ...defaults, fontSize: 10 } }]));
+  const presets = parsePresets(
+    serializePresets([
+      { name: 'Same', settings: defaults },
+      { name: 'Same', settings: { ...defaults, fontSize: 10 } },
+    ]),
+  );
   expect(presets[0]!.id).not.toBe(presets[1]!.id);
   expect(parseStoredPresets(serializeStoredPresets(presets))).toEqual(presets);
   expect(parseStoredPresets(serializeStoredPresets([]))).toEqual([]);
-  expect(() => parseStoredPresets(serializeStoredPresets([presets[0]!, presets[0]!]))).toThrow('Invalid saved preset ID');
+  expect(() => parseStoredPresets(serializeStoredPresets([presets[0]!, presets[0]!]))).toThrow(
+    'Invalid saved preset ID',
+  );
 });
 
 test('exports exclude identity and every import creates fresh IDs even if supplied', () => {
@@ -50,17 +93,28 @@ test('merges resolve ID collisions only', () => {
   const migrated = parsePresets(serializePresets([{ name: 'Same', settings: defaults }]));
   expect(parseStoredPresets(serializeStoredPresets(migrated))).toEqual(migrated);
   const merged = mergePresets(migrated, migrated);
-  expect(merged.map(p => p.name)).toEqual(['Same', 'Same']);
+  expect(merged.map((p) => p.name)).toEqual(['Same', 'Same']);
   expect(merged[0]!.id).not.toBe(merged[1]!.id);
 });
 
-import { CURRENT_SETTINGS_KEY, restoreCurrentSettings, persistCurrentSettings } from '../src/presets';
+import {
+  CURRENT_SETTINGS_KEY,
+  restoreCurrentSettings,
+  persistCurrentSettings,
+} from '../src/presets';
 function memoryStorage() {
   const values = new Map<string, string>();
-  return { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
+  return {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      values.set(key, value);
+    },
+  };
 }
 test('session settings remain independent while new sessions inherit the last local update', () => {
-  const local = memoryStorage(), first = memoryStorage(), second = memoryStorage();
+  const local = memoryStorage(),
+    first = memoryStorage(),
+    second = memoryStorage();
   persistCurrentSettings({ ...defaults, offset: 100 }, first, local);
   expect(restoreCurrentSettings(second, local)!.offset).toBe(100);
   persistCurrentSettings({ ...defaults, offset: 200 }, first, local);
@@ -69,11 +123,16 @@ test('session settings remain independent while new sessions inherit the last lo
   expect(restoreCurrentSettings(memoryStorage(), local)!.offset).toBe(200);
 });
 test('invalid session data falls back to local, and storage failures do not prevent the other write', () => {
-  const local = memoryStorage(), session = memoryStorage();
+  const local = memoryStorage(),
+    session = memoryStorage();
   persistCurrentSettings(defaults, session, local);
   session.setItem(CURRENT_SETTINGS_KEY, 'broken');
   expect(restoreCurrentSettings(session, local)).toEqual(defaults);
-  const broken = { setItem() { throw new Error('quota'); } };
+  const broken = {
+    setItem() {
+      throw new Error('quota');
+    },
+  };
   expect(() => persistCurrentSettings({ ...defaults, offset: 300 }, broken, local)).toThrow();
   expect(restoreCurrentSettings(memoryStorage(), local)!.offset).toBe(300);
 });
@@ -81,12 +140,22 @@ test('invalid session data falls back to local, and storage failures do not prev
 import { presetLabel } from '../src/presets';
 test('selected preset labels reflect changes and revert when settings match', () => {
   expect(presetLabel('Default', defaults, { ...defaults, offset: 500 })).toBe('Default');
-  expect(presetLabel('Duet', defaults, { ...defaults, duetColor: '#ffaa00' })).toBe('Duet (Modified)');
+  expect(presetLabel('Duet', defaults, { ...defaults, duetColor: '#ffaa00' })).toBe(
+    'Duet (Modified)',
+  );
   expect(presetLabel('Duet', defaults, { ...defaults })).toBe('Duet');
-  expect(presetLabel('Duet', appearanceSettings(defaults), { ...defaults, offset: 500, showLyricsBeforeStart: true })).toBe('Duet');
+  expect(
+    presetLabel('Duet', appearanceSettings(defaults), {
+      ...defaults,
+      offset: 500,
+      showLyricsBeforeStart: true,
+    }),
+  ).toBe('Duet');
 });
 
 test('malformed JSON imports have an actionable error', () => {
-  expect(() => parsePresets('{broken')).toThrow('This file is not valid JSON. Choose a preset exported from Karaoke Maker.');
+  expect(() => parsePresets('{broken')).toThrow(
+    'This file is not valid JSON. Choose a preset exported from Karaoke Maker.',
+  );
   expect(() => parsePresets('null')).toThrow('Choose a Karaoke Maker preset file.');
 });

@@ -20,7 +20,9 @@ export async function readCustomFont(): Promise<File | undefined> {
       request.onsuccess = () => resolve(request.result as File | undefined);
       request.onerror = () => reject(request.error);
     });
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
 }
 export async function storeCustomFont(file: File | null): Promise<void> {
   const db = await database();
@@ -28,10 +30,14 @@ export async function storeCustomFont(file: File | null): Promise<void> {
     await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction(STORE, 'readwrite');
       const store = transaction.objectStore(STORE);
-      if (file) store.put(file, KEY); else store.delete(KEY);
+      if (file) store.put(file, KEY);
+      else store.delete(KEY);
       transaction.oncomplete = () => resolve();
-      transaction.onabort = () => reject(transaction.error ?? new Error('Could not save the custom font.'));
+      transaction.onabort = () =>
+        reject(transaction.error ?? new Error('Could not save the custom font.'));
       transaction.onerror = () => reject(transaction.error);
     });
-  } finally { db.close(); }
+  } finally {
+    db.close();
+  }
 }

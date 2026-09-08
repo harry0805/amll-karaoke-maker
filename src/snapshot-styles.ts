@@ -22,4 +22,6 @@ flex-direction flex-wrap flex-grow flex-shrink flex-basis align-items align-cont
 mask-image mask-position mask-size mask-repeat mask-origin mask-clip mask-mode mask-composite
 -webkit-mask-image -webkit-mask-position -webkit-mask-size -webkit-mask-repeat -webkit-mask-origin -webkit-mask-clip -webkit-mask-composite
 clip-path content float clear list-style-type d
-`.trim().split(/\s+/);
+`
+  .trim()
+  .split(/\s+/);

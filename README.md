@@ -64,6 +64,12 @@ The default lyric box occupies the bottom 35% with room for nearby lines. Long l
 - Export is frame-timed, not real-time screen recording, so it can run faster or slower than playback without deliberately skipping frames. Lyric snapshots and outline rasterization remain the main rendering costs. See the performance measurements below.
 - Font availability affects typography. No transparent-overlay-only export is included. TTML is limited to 10 MiB.
 
+## Formatting and linting
+
+Run `bun run format` to format project files with Prettier and `bun run lint:fix` to apply ESLint automatic fixes. Use `bun run format:check` and `bun run lint` to check without changing files. ESLint uses the recommended JavaScript, TypeScript, and Svelte rules, with formatting rules disabled in favor of Prettier. Generated output, local caches, dependency patches, and bundled font assets are excluded.
+
+Automatic fixes leave remaining lint findings for later review.
+
 ## Checks
 
 ```sh

@@ -8,25 +8,41 @@ const LINE_FADE_MS = 250;
 
 export function parseLyrics(text: string): LyricLine[] {
   const xml = new DOMParser().parseFromString(text, 'application/xml');
-  if (xml.querySelector('parsererror') || xml.documentElement.localName !== 'tt') throw new Error('This is not a valid TTML document.');
+  if (xml.querySelector('parsererror') || xml.documentElement.localName !== 'tt')
+    throw new Error('This is not a valid TTML document.');
   // AMLL 1.0 requires Apple line keys, though ordinary TTML does not.
   // Add missing keys to the in-memory document so those files work too.
   const itunes = 'http://music.apple.com/lyric-ttml-internal';
   const paragraphs = Array.from(xml.getElementsByTagNameNS('*', 'p'));
-  const keys = new Set(paragraphs.map(p => p.getAttributeNS(itunes, 'key')));
+  const keys = new Set(paragraphs.map((p) => p.getAttributeNS(itunes, 'key')));
   let nextKey = 0;
   for (const paragraph of paragraphs) {
     if (paragraph.getAttributeNS(itunes, 'key')) continue;
     let key: string;
-    do { key = `karaoke-${nextKey++}`; } while (keys.has(key));
+    do {
+      key = `karaoke-${nextKey++}`;
+    } while (keys.has(key));
     keys.add(key);
     paragraph.setAttributeNS(itunes, 'itunes:key', key);
   }
   const lines = parseTTML(new XMLSerializer().serializeToString(xml)).lines;
-  if (!lines.length || !lines.some(line => line.words.some(word => word.word.trim()))) throw new Error('No timed lyrics found in this TTML.');
+  if (!lines.length || !lines.some((line) => line.words.some((word) => word.word.trim())))
+    throw new Error('No timed lyrics found in this TTML.');
   for (const line of lines) {
-    if (!Number.isFinite(line.startTime) || !Number.isFinite(line.endTime) || line.endTime < line.startTime || line.startTime < 0) throw new Error('TTML contains invalid line timing.');
-    for (const word of line.words) if (!Number.isFinite(word.startTime) || !Number.isFinite(word.endTime) || word.endTime < word.startTime) throw new Error('TTML contains invalid word timing.');
+    if (
+      !Number.isFinite(line.startTime) ||
+      !Number.isFinite(line.endTime) ||
+      line.endTime < line.startTime ||
+      line.startTime < 0
+    )
+      throw new Error('TTML contains invalid line timing.');
+    for (const word of line.words)
+      if (
+        !Number.isFinite(word.startTime) ||
+        !Number.isFinite(word.endTime) ||
+        word.endTime < word.startTime
+      )
+        throw new Error('TTML contains invalid word timing.');
   }
   return lines;
 }
@@ -49,7 +65,11 @@ export class Lyrics {
   private duetOutlineId = `${this.outlineId}-duet`;
   private duetOutlineDilate: SVGFEMorphologyElement;
   private duetOutlineFlood: SVGFEFloodElement;
-  constructor(private stage: HTMLElement, private container: HTMLElement, settings: Settings) {
+  constructor(
+    private stage: HTMLElement,
+    private container: HTMLElement,
+    settings: Settings,
+  ) {
     this.settings = settings;
     // Apply the outline after the words have been masked and animated. A text
     // stroke on the spans themselves is clipped by their individual masks.
@@ -70,10 +90,11 @@ export class Lyrics {
     stage.append(svg);
     this.outlineSVG = svg;
     this.resizeObserver = new ResizeObserver(() => {
-      if (!this.outlineFrame) this.outlineFrame = requestAnimationFrame(() => {
-        this.outlineFrame = 0;
-        this.updateOutline();
-      });
+      if (!this.outlineFrame)
+        this.outlineFrame = requestAnimationFrame(() => {
+          this.outlineFrame = 0;
+          this.updateOutline();
+        });
     });
     this.resizeObserver.observe(stage);
     container.append(this.player.getElement());
@@ -107,7 +128,12 @@ export class Lyrics {
     this.player.getElement().style.setProperty('--amll-lp-font-size', `${settings.fontSize}cqh`);
     this.player.getElement().style.setProperty('--line-spacing', String(settings.lineSpacing));
     this.player.getElement().style.setProperty('--amll-lp-color', settings.textColor);
-    this.player.getElement().style.setProperty('--duet-color', settings.useDuetColors ? settings.duetColor : settings.textColor);
+    this.player
+      .getElement()
+      .style.setProperty(
+        '--duet-color',
+        settings.useDuetColors ? settings.duetColor : settings.textColor,
+      );
     container.style.fontFamily = fonts[settings.font];
     this.updateOutline();
     this.stage.style.setProperty('--shade-background', backgroundGradient(settings));
@@ -118,8 +144,10 @@ export class Lyrics {
     // Gate only the offset lead-in, not the gap before the first sung line.
     // Keep the unclamped time so a delayed timeline can remain hidden.
     const time = this.videoTime - this.settings.offset;
-    const progress = this.settings.showLyricsBeforeStart || this.settings.offset <= 0
-      ? 1 : Math.min(1, Math.max(0, time / LINE_FADE_MS));
+    const progress =
+      this.settings.showLyricsBeforeStart || this.settings.offset <= 0
+        ? 1
+        : Math.min(1, Math.max(0, time / LINE_FADE_MS));
     this.container.style.opacity = String(progress * progress * (3 - 2 * progress));
   }
   private updateOutline() {
@@ -127,14 +155,31 @@ export class Lyrics {
     // before their springs carry them across its lower edge.
     this.player.setOverscanPx(Math.max(300, this.stage.clientHeight * 2));
     // CSS text stroke straddles a glyph edge. Dilation grows outward only.
-    const radius = this.stage.clientHeight * this.settings.fontSize / 100 * this.settings.outlineWidth / 200;
+    const radius =
+      (((this.stage.clientHeight * this.settings.fontSize) / 100) * this.settings.outlineWidth) /
+      200;
     this.outlineDilate.setAttribute('radius', String(radius));
     this.outlineFlood.setAttribute('flood-color', this.settings.outlineColor);
-    this.player.getElement().style.setProperty('--lyric-outline-filter', radius > 0 ? `url(#${this.outlineId})` : 'none');
-    const duetRadius = this.stage.clientHeight * this.settings.fontSize / 100 * (this.settings.useDuetColors ? this.settings.duetOutlineWidth : this.settings.outlineWidth) / 200;
+    this.player
+      .getElement()
+      .style.setProperty('--lyric-outline-filter', radius > 0 ? `url(#${this.outlineId})` : 'none');
+    const duetRadius =
+      (((this.stage.clientHeight * this.settings.fontSize) / 100) *
+        (this.settings.useDuetColors
+          ? this.settings.duetOutlineWidth
+          : this.settings.outlineWidth)) /
+      200;
     this.duetOutlineDilate.setAttribute('radius', String(duetRadius));
-    this.duetOutlineFlood.setAttribute('flood-color', this.settings.useDuetColors ? this.settings.duetOutlineColor : this.settings.outlineColor);
-    this.player.getElement().style.setProperty('--duet-outline-filter', duetRadius > 0 ? `url(#${this.duetOutlineId})` : 'none');
+    this.duetOutlineFlood.setAttribute(
+      'flood-color',
+      this.settings.useDuetColors ? this.settings.duetOutlineColor : this.settings.outlineColor,
+    );
+    this.player
+      .getElement()
+      .style.setProperty(
+        '--duet-outline-filter',
+        duetRadius > 0 ? `url(#${this.duetOutlineId})` : 'none',
+      );
   }
   async refreshFont() {
     const generation = ++this.fontGeneration;
@@ -152,7 +197,13 @@ export class Lyrics {
   }
   async load(text: string) {
     const lines = parseLyrics(text);
-    this.fontText = lines.flatMap(line => [line.words.map(word => word.word).join(''), line.translatedLyric, line.romanLyric]).join(' ');
+    this.fontText = lines
+      .flatMap((line) => [
+        line.words.map((word) => word.word).join(''),
+        line.translatedLyric,
+        line.romanLyric,
+      ])
+      .join(' ');
     await this.refreshFont();
     this.player.setLyricLines(lines, 0);
     // AMLL may extend a line to match background vocals or transitions. Hide
@@ -160,8 +211,8 @@ export class Lyrics {
     this.lineEnds = new WeakMap();
     let index = 0;
     const sungEnd = (line: LyricLine) => {
-      const words = line.words.filter(word => word.word.trim());
-      return words.length ? Math.max(...words.map(word => word.endTime)) : line.endTime;
+      const words = line.words.filter((word) => word.word.trim());
+      return words.length ? Math.max(...words.map((word) => word.endTime)) : line.endTime;
     };
     for (const group of this.player.currentLyricGroups) {
       this.lineEnds.set(group.mainLine, sungEnd(lines[index++]!));
@@ -171,7 +222,9 @@ export class Lyrics {
     // Deferred resize delivery needs time to measure newly built offscreen
     // lines too. Settle their geometry before capturing the first frame.
     for (let pass = 0; pass < 3; pass++) {
-      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      );
       await this.player.calcLayout(true, true);
       this.player.update(0);
     }
@@ -184,14 +237,15 @@ export class Lyrics {
     this.videoTime = videoTime;
     this.updateIntro();
     const time = Math.max(0, videoTime - this.settings.offset);
-    const jump = seek || this.previous < 0 || time < this.previous || Math.abs(time - this.previous) > 250;
+    const jump =
+      seek || this.previous < 0 || time < this.previous || Math.abs(time - this.previous) > 250;
     this.player.setCurrentTime(time, jump);
     if (jump) await this.player.calcLayout(true, true);
     this.player.update(Math.min(100, delta));
     const groups = this.player.currentLyricGroups;
     // The viewport clips upcoming lines spatially; never toggle them by index.
     // This lets them enter from below rather than pop into an empty space.
-    groups.forEach(group => {
+    groups.forEach((group) => {
       for (const line of [group.mainLine, group.bgLine]) {
         if (!line) continue;
         const end = this.lineEnds.get(line) ?? line.getLine().endTime;
@@ -210,7 +264,8 @@ export class Lyrics {
     for (const group of this.player.currentLyricGroups) {
       if (time >= group.startTime && time < group.endTime) group.enable(time, false);
     }
-    for (const animation of this.player.getElement().getAnimations({ subtree: true })) animation.pause();
+    for (const animation of this.player.getElement().getAnimations({ subtree: true }))
+      animation.pause();
     this.previous = time;
   }
 }

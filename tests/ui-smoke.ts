@@ -176,15 +176,13 @@ try {
   await page.locator('#preset-close').click();
   await step(page, 'Source');
   await page.locator('#video-file').setInputFiles(source);
-  await page
-    .locator('#ttml-file')
-    .setInputFiles({
-      name: 'lyrics.ttml',
-      mimeType: 'application/xml',
-      buffer: Buffer.from(
-        '<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="0s" end="1.8s"><span begin="0s" end="0.9s">Hello </span><span begin="0.9s" end="1.8s">world</span></p></div></body></tt>',
-      ),
-    });
+  await page.locator('#ttml-file').setInputFiles({
+    name: 'lyrics.ttml',
+    mimeType: 'application/xml',
+    buffer: Buffer.from(
+      '<tt xmlns="http://www.w3.org/ns/ttml"><body><div><p begin="0s" end="1.8s"><span begin="0s" end="0.9s">Hello </span><span begin="0.9s" end="1.8s">world</span></p></div></body></tt>',
+    ),
+  });
   await text(page, 'ttml-name', 'lyrics.ttml');
   await page.waitForFunction(
     () => !(document.querySelector('#play') as HTMLButtonElement).disabled,

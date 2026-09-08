@@ -9,8 +9,9 @@
   let urls: string[] = [];
   onDestroy(() => urls.forEach((url) => URL.revokeObjectURL(url)));
   $effect(() => {
-    revision;
-    refresh;
+    // Track both values so either change reloads the saved exports.
+    void revision;
+    void refresh;
     let cancelled = false;
     untrack(() => {
       void listStoredExports()

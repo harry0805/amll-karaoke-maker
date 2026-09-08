@@ -85,7 +85,7 @@ export async function snapshotLyrics(
   // travel inside the snapshot, so resolve them inside that SVG image too.
   let xml = decodeURIComponent(uri.slice(uri.indexOf(',') + 1))
     .replace(/url\(&quot;[^#]*#([^&]+)&quot;\)/g, 'url(#$1)')
-    .replace(/url\("[^#"]*#([^"\)]+)"\)/g, 'url(#$1)');
+    .replace(/url\("[^#"]*#([^")]+)"\)/g, 'url(#$1)');
   if (outlineBounds.size) {
     const document = new DOMParser().parseFromString(xml, 'image/svg+xml');
     for (const line of document.querySelectorAll<HTMLElement>('[data-snapshot-outline]')) {

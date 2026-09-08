@@ -115,7 +115,6 @@
         style:aspect-ratio={width && height ? `${width} / ${height}` : '16 / 9'}
       >
         <!-- The source video is previewed with its timed lyrics in the sibling container. -->
-        <!-- svelte-ignore a11y_media_has_caption -->
         <video
           class="block size-full object-contain"
           id="video"

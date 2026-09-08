@@ -35,12 +35,14 @@ export default defineConfig(
   {
     files: ['tests/**/*.ts'],
     languageOptions: { globals: globals.browser },
+    rules: { '@typescript-eslint/no-explicit-any': 'off' },
   },
   {
     files: ['**/*.svelte', '**/*.svelte.ts', '**/*.svelte.js'],
     languageOptions: {
       parserOptions: { parser: ts.parser, svelteConfig },
     },
+    rules: { 'svelte/require-each-key': 'off' },
   },
   prettier,
   svelte.configs.prettier,

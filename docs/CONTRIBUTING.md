@@ -21,6 +21,8 @@ bun run dev
 
 Open [localhost:3000](http://127.0.0.1:3000). To choose another port, use `PORT=3210 bun run dev`.
 
+Use a recent Chromium-based browser, such as Chrome or Edge, or Firefox for development and testing. Safari and other browsers that do not use Chromium or Firefox's Gecko engine are not supported. WebKit-based versions of Chrome and Firefox are also unsupported. The editor shows a browser warning, but lets users continue. Export still requires compatible browser APIs and codecs.
+
 The app runs entirely in the browser. Svelte manages the UI, AMLL renders the lyrics, and Mediabunny handles media decoding and encoding through browser APIs. Vite serves the app during development. There is no video processing server to set up.
 
 Use Bun for dependencies and scripts. `bun install` also applies the local AMLL patch in `patches/`.

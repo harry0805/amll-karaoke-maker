@@ -56,7 +56,7 @@ async function renderToFile(
     typeof VideoDecoder === 'undefined'
   ) {
     throw new Error(
-      'Browser rendering needs WebCodecs. Open this site over HTTPS or localhost in a recent Chrome, Edge, or Safari.',
+      'Browser rendering needs WebCodecs. Open this site over HTTPS or localhost in a recent Chrome, Edge, or Firefox.',
     );
   }
   const input = new Input({
@@ -181,7 +181,7 @@ async function renderToFile(
       conversion.discardedTracks.some(({ track }) => track !== audioTrack || !audioSource)
     ) {
       throw new Error(
-        'This browser cannot encode this video or its audio as MP4. Try a recent Chrome, Edge, or Safari with an H.264/AAC source. No tracks were rendered.',
+        'This browser cannot encode this video or its audio as MP4. Try a recent Chrome, Edge, or Firefox with an H.264/AAC source. No tracks were rendered.',
       );
     }
     signal.throwIfAborted();

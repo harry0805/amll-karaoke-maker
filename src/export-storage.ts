@@ -42,7 +42,7 @@ export async function writeStoredExport(
       const handle = await dir.getFileHandle(id + '.mp4', { create: true });
       if (!handle.createWritable)
         throw new Error(
-          'This browser cannot save renders to browser storage. Try a recent Chrome, Edge, or Safari.',
+          'This browser cannot save renders to browser storage. Try a recent Chrome, Edge, or Firefox.',
         );
       stream = await handle.createWritable();
       await write(stream); // The encoder finalizes and closes this stream.

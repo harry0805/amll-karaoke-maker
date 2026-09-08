@@ -12,8 +12,25 @@
   import PresetManager from './components/PresetManager.svelte';
   import ExportPanel from './components/ExportPanel.svelte';
   import Icon from './components/Icon.svelte';
+  import { getIOSWebKitBrowser, isSupportedBrowser } from './browser-support';
 
   const studio = new StudioState();
+  const unsupportedBrowser = !isSupportedBrowser(navigator.userAgent);
+  const iosWebKitBrowser = getIOSWebKitBrowser(navigator.userAgent);
+  let browserSupportDialog: HTMLDialogElement;
+  onMount(() => {
+    if (!unsupportedBrowser) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const showWarning = () => {
+      timer = setTimeout(() => browserSupportDialog.showModal(), 1000);
+    };
+    if (document.readyState === 'complete') showWarning();
+    else window.addEventListener('load', showWarning, { once: true });
+    return () => {
+      window.removeEventListener('load', showWarning);
+      clearTimeout(timer);
+    };
+  });
   let settingsRestored = $state(false);
   let storageError = $state('');
   onMount(() => {
@@ -197,6 +214,33 @@
     <StudioFooter />
   </div>
 </main>
+<dialog
+  class="m-auto max-h-[calc(100dvh-48px)] w-[min(460px,calc(100vw-32px))] rounded-[14px] border border-solid border-[#3b3b43] bg-panel p-[26px] text-foreground shadow-[0_24px_80px_#0008] backdrop:bg-black/60 backdrop:backdrop-blur-[4px]"
+  id="browser-support-warning"
+  aria-labelledby="browser-support-title"
+  aria-describedby="browser-support-description"
+  bind:this={browserSupportDialog}
+>
+  <h2 class="mt-0 mb-2.5 text-[20px] font-semibold" id="browser-support-title">
+    {iosWebKitBrowser ? `${iosWebKitBrowser} on iOS is not supported` : 'Browser unsupported'}
+  </h2>
+  <p class="m-0 text-[14px] leading-[1.6] text-[#aaaab4]" id="browser-support-description">
+    {#if iosWebKitBrowser}
+      Preview and video rendering may have issues. This version of {iosWebKitBrowser} uses WebKit,
+      the same underlying browser engine as Safari, which is not supported. Try using Chrome, 
+      Edge, or Firefox on an android phone or a computer instead.
+    {:else}
+      Preview and video rendering may have issues. Use a Chromium-based browser, such as Chrome or
+      Edge, or Firefox. Safari and most iOS browsers are not supported.
+    {/if}
+  </p>
+  <form method="dialog" class="mt-6 flex flex-wrap justify-end gap-2.5">
+    <button
+      class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border border-solid border-accent bg-accent px-[15px] py-[9px] text-[13px] text-accent-ink outline-offset-[5px] hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border disabled:cursor-default disabled:opacity-35"
+      id="browser-support-proceed">Proceed anyway</button
+    >
+  </form>
+</dialog>
 <dialog
   class="m-auto max-h-[calc(100dvh-48px)] w-[min(460px,calc(100vw-32px))] rounded-[14px] border border-solid border-[#3b3b43] bg-panel p-[26px] text-foreground shadow-[0_24px_80px_#0008] backdrop:bg-black/60 backdrop:backdrop-blur-[4px]"
   id="compatibility-warning"

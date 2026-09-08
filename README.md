@@ -17,6 +17,8 @@ Everything runs on your device. There is no video upload or video editor to inst
 
 ## Make your first video
 
+Use a recent Chromium-based browser, such as Chrome or Edge, or Firefox. Safari and other browsers that do not use Chromium or Firefox's Gecko engine are not supported. The app shows a warning in unsupported browsers because preview and video rendering may have issues. Export also depends on your browser's codec support.
+
 1. [Open the app](https://karakoe.hproject.xyz) and choose your video.
 2. Choose a TTML lyrics file. TTML is a lyrics file that tells when each line or word is being sung.
 3. Play it and adjust the style in the settings panel.

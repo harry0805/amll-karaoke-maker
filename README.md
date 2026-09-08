@@ -2,7 +2,7 @@
 
 Turn a music video and timed lyrics into a karaoke video, right in your browser. Add animated lyrics, make them your own, and download the finished MP4. Your video and lyrics stay on your device.
 
-[Watch the showcase video](docs/showcase.mp4)
+https://github.com/user-attachments/assets/c5586ff8-3da9-497f-8fe1-5d05fd68dc07
 
 **[Open Karaoke Maker](https://karakoe.hproject.xyz)** · [Getting started](#make-your-first-video) · [Contribution guide](docs/CONTRIBUTING.md)
 

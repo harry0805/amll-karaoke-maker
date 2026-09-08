@@ -38,7 +38,6 @@
       class="absolute inset-0 h-full w-full cursor-pointer opacity-0 outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
       id="ttml-file"
       type="file"
-      accept=".ttml,.xml"
       disabled={studio.session.exporting}
       onchange={(event) => studio.loadTTML(event.currentTarget.files?.[0])}
     /><span class="mt-[9px] block truncate text-[14px] text-[#ababba]" id="ttml-name"

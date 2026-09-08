@@ -29,6 +29,8 @@ Need a lyrics file? Use [AMLL TTML Tool](https://tool.amll.dev/) to create or ed
 
 Found a problem or have an idea? [Open an issue](https://github.com/harry0805/amll-karaoke-maker/issues). For rendering problems, include your browser info, the original video and lyrics files, and any error message the app shows.
 
+Code and documentation contributions are welcome. See the [contribution guide](docs/CONTRIBUTING.md) for local setup and how to submit a pull request.
+
 ## Credits
 
 Lyrics are rendered with [Apple Music-like Lyrics](https://github.com/amll-dev/applemusic-like-lyrics). Bundled fonts include their [licenses](public/fonts/README.md). Dependency licensing notes are in the [contribution guide](docs/CONTRIBUTING.md#dependency-licenses).

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://karakoe.hproject.xyz/sitemap.xml

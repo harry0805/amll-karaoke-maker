@@ -54,6 +54,9 @@
     height: 100%;
   }
   @media (width < 951px) {
+    #app {
+      height: auto;
+    }
     body:not(.render) {
       height: auto;
       overflow: visible;

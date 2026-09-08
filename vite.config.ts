@@ -3,6 +3,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 
 export default defineConfig({
+  appType: 'mpa',
   plugins: [
     tailwindcss(),
     svelte(),
@@ -19,5 +20,10 @@ export default defineConfig({
     },
   ],
   server: { host: '127.0.0.1', port: Number(process.env.PORT || 3000), strictPort: true },
-  build: { outDir: 'dist' },
+  build: {
+    outDir: 'dist',
+    rollupOptions: {
+      input: ['index.html', 'guide/index.html'],
+    },
+  },
 });

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f65b53" />
+    <title>Convert TTML Lyrics to a Karaoke MP4 | Karaoke Maker</title>
+    <meta
+      name="description"
+      content="Learn how to combine a video with timed TTML lyrics, customize animated lyrics, and export a karaoke MP4 using Karaoke Maker in your browser."
+    />
+    <link rel="canonical" href="https://karakoe.hproject.xyz/guide/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Karaoke Maker" />
+    <meta property="og:title" content="Convert TTML Lyrics to a Karaoke MP4 | Karaoke Maker" />
+    <meta
+      property="og:description"
+      content="Learn how to combine a video with timed TTML lyrics, customize animated lyrics, and export a karaoke MP4 using Karaoke Maker in your browser."
+    />
+    <meta property="og:url" content="https://karakoe.hproject.xyz/guide/" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Convert TTML Lyrics to a Karaoke MP4 | Karaoke Maker" />
+    <meta
+      name="twitter:description"
+      content="Learn how to combine a video with timed TTML lyrics, customize animated lyrics, and export a karaoke MP4 using Karaoke Maker in your browser."
+    />
+    <link rel="stylesheet" href="/content.css" />
+    <link rel="icon" type="image/svg+xml" href="/icons/karaoke-maker-rounded.svg" />
+  </head>
+  <body class="guide-page">
+    <main class="site-content">
+      <nav aria-label="Main"><a href="/">Karaoke Maker</a></nav>
+      <h1>How to turn TTML lyrics into a karaoke MP4</h1>
+      <p>
+        You need a source video and a TTML lyrics file with timing. Karaoke Maker combines them into
+        an MP4 with animated lyrics. TTML contains text and timing, so it cannot produce a music
+        video on its own.
+      </p>
+      <p>
+        Karaoke Maker uses Apple Music-like Lyrics, or AMLL, for scrolling lyrics and word-by-word
+        highlighting when your file includes word timing. Your video and lyrics stay on your device
+        throughout editing and export.
+      </p>
+      <h2>1. Prepare your timed lyrics</h2>
+      <p>
+        Create or edit your TTML file in <a href="https://tool.amll.dev/">AMLL TTML Tool</a>. Check
+        that the lyrics match your recording. Line timing controls when each line appears; word
+        timing enables word-by-word highlighting. Karaoke Maker reads the timing you supply and does
+        not transcribe audio or automatically align words.
+      </p>
+      <h2>2. Choose your video and TTML file</h2>
+      <p>
+        <a href="/">Open Karaoke Maker</a> and choose both files in Source. Files stay on your
+        device. If the editor reports a compatibility issue, read the warning before continuing.
+        Browser codec support affects which videos can render.
+      </p>
+      <h2>3. Check the timing</h2>
+      <p>
+        Play the preview and compare the highlighted lyrics with the vocals. Use Timing offset to
+        shift the lyrics. Positive values make lyrics appear later. If the timing drifts during the
+        song, check the timestamps in the TTML file and confirm that it matches this version of the
+        recording.
+      </p>
+      <h2>4. Style the lyrics</h2>
+      <p>
+        In Settings, adjust the font, size, colors, outlines, spacing, and placement. Use the
+        background shade to keep text readable over bright scenes. Save a preset if you want to
+        reuse these settings.
+      </p>
+      <h2>5. Render and download the MP4</h2>
+      <p>
+        Choose Render MP4 and keep the tab open until the export finishes. Download the result from
+        Saved exports. Watch the downloaded video to check the timing and appearance.
+      </p>
+      <h2>Does this remove vocals?</h2>
+      <p>
+        No. Karaoke Maker adds lyrics to your source video. If you want an instrumental soundtrack,
+        prepare a video with that audio before importing it.
+      </p>
+      <h2>What if rendering fails?</h2>
+      <p>
+        Check the compatibility message and the error shown by the editor. Export depends on the
+        browser, device, and source codecs. For help,
+        <a href="https://github.com/harry0805/amll-karaoke-maker/issues">open a GitHub issue</a>
+        with your browser details and the error message.
+      </p>
+      <p><a href="/">Make a karaoke video</a></p>
+    </main>
+  </body>
+</html>

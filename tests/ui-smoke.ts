@@ -158,8 +158,9 @@ try {
   assert.equal(await page.locator('#fontSize').inputValue(), '7');
   await other.close();
 
-  if (!(await page.locator('#preset-panel').isVisible()))
-    await page.locator('#preset-open').click();
+  // The dialog's asynchronous close event reopens the manager.
+  await page.bringToFront();
+  await page.locator('#preset-panel').waitFor({ state: 'visible' });
   await page.getByRole('button', { name: 'Delete Other tab', exact: true }).click();
   await page.locator('#preset-action-confirm').click();
   await page

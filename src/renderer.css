@@ -1,0 +1,108 @@
+/* Shared by the preview, offscreen export stage, and renderer tests.
+   AMLL creates these elements at runtime, outside the Svelte components. */
+@import '../node_modules/@applemusic-like-lyrics/core/dist/style.css';
+
+#stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16/9;
+  overflow: hidden;
+  container-type: size;
+}
+
+#shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  top: auto;
+  height: var(--shade-height, 55%);
+  background: var(--shade-background, transparent);
+}
+
+#lyrics {
+  position: absolute;
+  left: 4%;
+  width: 92%;
+  bottom: 4%;
+  height: 32%;
+  pointer-events: none;
+  mask-image: linear-gradient(transparent, black 8%, black 92%, transparent);
+  font-family: 'Arial Rounded MT Bold', 'SF Pro Rounded', Arial, 'PingFang SC', sans-serif;
+  font-weight: 750;
+  filter: drop-shadow(0 2px 3px #0009);
+}
+
+.amll-lyric-player {
+  --amll-lp-font-size: 4.4cqh;
+  --amll-lp-line-width-aspect: 1 !important;
+  --amll-lp-line-padding-x: 0 !important;
+  --amll-lp-hover-bg-color: transparent;
+  mix-blend-mode: normal !important;
+}
+
+.amll-lyric-player [class*='lyricLineWrapper'] {
+  transition: none !important;
+}
+
+.amll-lyric-player [class*='lyricSubLine']:empty {
+  display: none;
+}
+
+html:has(body.render),
+body.render {
+  background: transparent !important;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+body.render #stage {
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: auto;
+}
+
+body.render #video {
+  display: none;
+}
+
+/* Springs use explicit frame deltas; CSS transitions must not follow wall time. */
+.amll-lyric-player * {
+  transition: none !important;
+}
+
+.amll-lyric-player.dom {
+  line-height: calc(1.2 * var(--line-spacing, 1));
+}
+
+.amll-lyric-player [class*='_lyricLineWrapper'] {
+  padding-block: calc(0.4em * var(--line-spacing, 1));
+  gap: calc(0.3em * var(--line-spacing, 1));
+}
+
+.amll-lyric-player [class*='_lyricDuetLine'] {
+  color: var(--duet-color);
+}
+
+/* Outline the composed line, outside AMLL's individual word masks. */
+.amll-lyric-player [class*='_lyricMainLine'],
+.amll-lyric-player [class*='_lyricSubLine'],
+.amll-lyric-player [class*='_interludeDots'] {
+  filter: var(--lyric-outline-filter, none);
+}
+
+/* Word masks need room for descenders and floating glyphs even in compact rows. */
+.amll-lyric-player [class*='_lyricMainLine'] span[style*='mask-image'] {
+  padding-block: 1em;
+  margin-block: -1em;
+}
+
+.amll-lyric-player [class*='_lyricLine']:not([class*='_lyricLineWrapper']) {
+  contain: layout style;
+  content-visibility: visible;
+  overflow: visible;
+}
+
+.amll-lyric-player [class*='_lyricDuetLine'] {
+  --lyric-outline-filter: var(--duet-outline-filter, none);
+}

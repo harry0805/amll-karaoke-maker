@@ -12,6 +12,8 @@ bun run dev
 Open http://127.0.0.1:3000. For another port, use `PORT=3210 bun run dev`.
 Svelte 5 manages the UI, and Vite serves the development files. Bun runs the package scripts and tests. There is no export backend, FFmpeg installation, or separate Chromium process needed to use the app.
 
+Tailwind CSS 4 styles the Svelte components through its Vite plugin. `src/style.css` defines theme colors, breakpoints, and page defaults. `src/renderer.css` contains the shared preview/export rules for lyric elements created by AMLL. Tailwind Preflight is omitted to preserve their layout and snapshot measurements.
+
 ```sh
 bun run build
 ```
@@ -69,6 +71,8 @@ The default lyric box occupies the bottom 35% with room for nearby lines. Long l
 Run `bun run format` to format project files with Prettier and `bun run lint:fix` to apply ESLint automatic fixes. Use `bun run format:check` and `bun run lint` to check without changing files. ESLint uses the recommended JavaScript, TypeScript, and Svelte rules, with formatting rules disabled in favor of Prettier. Generated output, local caches, dependency patches, and bundled font assets are excluded.
 
 Automatic fixes leave remaining lint findings for later review.
+
+Prettier also sorts Tailwind utility classes in Svelte components, using the theme in `src/style.css`.
 
 ## Checks
 

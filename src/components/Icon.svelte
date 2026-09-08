@@ -57,7 +57,7 @@
 </script>
 
 <svg
-  class="ui-icon"
+  class="ui-icon size-[17px] shrink-0 align-middle"
   width="24"
   height="24"
   viewBox="0 0 24 24"

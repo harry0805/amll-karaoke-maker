@@ -28,10 +28,17 @@
   ] as const;
 </script>
 
-<section class="panel">
-  <h2><Icon name="palette" />Lyric style</h2>
-  <label class="font-label"
+<section
+  class="mb-6 border-0 border-b border-solid border-divider pb-6 last:mb-0 last:border-0 last:pb-0"
+>
+  <h2
+    class="mt-0 mb-[17px] flex items-center gap-[9px] text-[16px] font-semibold [&>svg]:text-accent-text"
+  >
+    <Icon name="palette" />Lyric style
+  </h2>
+  <label class="block text-[14px]"
     >Font<select
+      class="mt-2 block w-full rounded-md border border-solid border-[#39393f] bg-field p-2.5 text-[#eee] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
       id="font"
       value={studio.settings.font}
       disabled={studio.exporting}
@@ -53,14 +60,26 @@
       >
     </select></label
   >
-  <p id="font-license-hint" class="hint" hidden={!bundledFamilies[studio.settings.font]}>
-    <a id="font-licenses" href={fontLicenseURL} target="_blank" rel="noopener noreferrer"
-      >Bundled font licenses</a
+  <p
+    id="font-license-hint"
+    class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
+    hidden={!bundledFamilies[studio.settings.font]}
+  >
+    <a
+      class="cursor-pointer outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
+      id="font-licenses"
+      href={fontLicenseURL}
+      target="_blank"
+      rel="noopener noreferrer">Bundled font licenses</a
     >
   </p>
-  <div id="custom-font-controls" hidden={studio.settings.font !== 'custom'}>
-    <label class="file-picker"
-      ><span><strong>Custom font</strong></span><input
+  <div class="mt-3.5" id="custom-font-controls" hidden={studio.settings.font !== 'custom'}>
+    <label
+      class="relative mb-2.5 block cursor-pointer rounded-lg border border-solid border-[#36363d] bg-panel p-3.5 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-accent focus-within:outline-solid hover:border-accent-border"
+      ><span class="flex items-center gap-2.5 text-[12px] text-muted [&>svg]:text-accent-text"
+        ><strong class="text-[14px] font-medium text-foreground">Custom font</strong></span
+      ><input
+        class="absolute inset-0 h-full w-full cursor-pointer opacity-0 outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
         id="custom-font-file"
         type="file"
         accept=".ttf,.otf,.woff,.woff2"
@@ -70,34 +89,45 @@
           event.currentTarget.value = '';
           if (file) void studio.changeCustomFont(file);
         }}
-      /><span id="custom-font-name">{studio.customName || 'Choose font'}</span></label
+      /><span class="mt-[9px] block truncate text-[14px] text-[#ababba]" id="custom-font-name"
+        >{studio.customName || 'Choose font'}</span
+      ></label
     >
     <button
+      class="cursor-pointer rounded-[7px] border border-solid border-control-border bg-control px-[9px] py-1.5 text-[12px] text-[#eee] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border disabled:cursor-default disabled:opacity-35"
       id="custom-font-remove"
       hidden={!studio.customName}
       disabled={studio.exporting || studio.fontUploadBusy}
       onclick={() => studio.changeCustomFont()}>Remove font</button
     >
-    <p class="hint">
+    <p
+      class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
+    >
       TTF, OTF, WOFF, or WOFF2, up to 32 MB. Font files are not included in presets.
     </p>
   </div>
-  <p id="font-status" class="hint" role="status">
+  <p
+    id="font-status"
+    class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted empty:hidden [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
+    role="status"
+  >
     {studio.fontError || (studio.fontLoading || studio.fontUploadBusy ? 'Loading font…' : '')}
   </p>
-  <div class="style-subsection">
-    <h3>Colors and outline</h3>
-    <div class="color-controls">
-      <label
+  <div class="mt-5 border-0 border-t border-solid border-[#303037] pt-4">
+    <h3 class="m-0 text-[14px] font-medium">Colors and outline</h3>
+    <div class="mt-4 flex gap-[18px]">
+      <label class="flex-1 text-[14px]"
         >Text color<input
+          class="mt-2 block h-[38px] w-full cursor-pointer rounded-md border border-solid border-[#39393f] bg-field p-[3px] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
           id="textColor"
           type="color"
           value={studio.settings.textColor}
           disabled={studio.exporting}
           oninput={(event) => studio.updateSetting('textColor', event.currentTarget.value)}
         /></label
-      ><label
+      ><label class="flex-1 text-[14px]"
         >Outline color<input
+          class="mt-2 block h-[38px] w-full cursor-pointer rounded-md border border-solid border-[#39393f] bg-field p-[3px] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
           id="outlineColor"
           type="color"
           value={studio.settings.outlineColor}
@@ -116,10 +146,15 @@
       disabled={studio.exporting}
       onchange={(value) => studio.updateSetting('outlineWidth', value)}
     />
-    <p class="hint">Set outline thickness to 0 to turn it off.</p>
+    <p
+      class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
+    >
+      Set outline thickness to 0 to turn it off.
+    </p>
   </div>
-  <label class="checkbox-label"
+  <label class="mt-4 flex cursor-pointer items-center gap-2 text-[14px]"
     ><input
+      class="m-0 accent-accent outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
       id="useDuetColors"
       type="checkbox"
       aria-controls="duet-style"
@@ -128,19 +163,25 @@
       onchange={(event) => studio.updateSetting('useDuetColors', event.currentTarget.checked)}
     /> Use different settings for duet</label
   >
-  <div id="duet-style" class="style-subsection" hidden={!studio.settings.useDuetColors}>
-    <h3>Duet colors and outline</h3>
-    <div class="color-controls">
-      <label
+  <div
+    id="duet-style"
+    class="mt-5 border-0 border-t border-solid border-[#303037] pt-4"
+    hidden={!studio.settings.useDuetColors}
+  >
+    <h3 class="m-0 text-[14px] font-medium">Duet colors and outline</h3>
+    <div class="mt-4 flex gap-[18px]">
+      <label class="flex-1 text-[14px]"
         >Duet text color<input
+          class="mt-2 block h-[38px] w-full cursor-pointer rounded-md border border-solid border-[#39393f] bg-field p-[3px] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
           id="duetColor"
           type="color"
           value={studio.settings.duetColor}
           disabled={studio.exporting}
           oninput={(event) => studio.updateSetting('duetColor', event.currentTarget.value)}
         /></label
-      ><label
+      ><label class="flex-1 text-[14px]"
         >Duet outline color<input
+          class="mt-2 block h-[38px] w-full cursor-pointer rounded-md border border-solid border-[#39393f] bg-field p-[3px] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
           id="duetOutlineColor"
           type="color"
           value={studio.settings.duetOutlineColor}
@@ -161,8 +202,14 @@
     />
   </div>
 </section>
-<section class="panel">
-  <h2><Icon name="move" />Lyric placement</h2>
+<section
+  class="mb-6 border-0 border-b border-solid border-divider pb-6 last:mb-0 last:border-0 last:pb-0"
+>
+  <h2
+    class="mt-0 mb-[17px] flex items-center gap-[9px] text-[16px] font-semibold [&>svg]:text-accent-text"
+  >
+    <Icon name="move" />Lyric placement
+  </h2>
   {#each placement as control}
     <RangeControl
       id={control.key}
@@ -173,11 +220,14 @@
     />
   {/each}
 </section>
-<section class="panel">
-  <h2>Background</h2>
-  <div class="color-controls">
-    <label
+<section
+  class="mb-6 border-0 border-b border-solid border-divider pb-6 last:mb-0 last:border-0 last:pb-0"
+>
+  <h2 class="mt-0 mb-[17px] text-[16px] font-semibold">Background</h2>
+  <div class="mt-4 flex gap-[18px]">
+    <label class="flex-1 text-[14px]"
       >Background color<input
+        class="mt-2 block h-[38px] w-full cursor-pointer rounded-md border border-solid border-[#39393f] bg-field p-[3px] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
         id="backgroundColor"
         type="color"
         value={studio.settings.backgroundColor}
@@ -199,6 +249,11 @@
     />
   {/each}
 </section>
-<p id="settings-error" class="step-error" role="alert" hidden={!studio.errors.settings}>
+<p
+  id="settings-error"
+  class="my-3.5 text-[13px] leading-[1.6] [overflow-wrap:anywhere] text-error"
+  role="alert"
+  hidden={!studio.errors.settings}
+>
   {studio.errors.settings}
 </p>

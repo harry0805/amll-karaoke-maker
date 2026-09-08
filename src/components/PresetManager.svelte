@@ -234,9 +234,18 @@
 </script>
 
 <svelte:window onstorage={storageChanged} onresize={positionPanel} onscroll={positionPanel} />
-<section class="panel preset-main">
-  <div class="preset-section-heading"><h2><Icon name="bookmark" />Preset</h2></div>
+<section
+  class="mb-6 border-0 border-b border-solid border-divider pb-6 last:mb-0 last:border-0 last:pb-0"
+>
+  <div class="flex items-center justify-between gap-3">
+    <h2
+      class="mt-0 mb-0 flex items-center gap-[9px] text-[16px] font-semibold [&>svg]:text-accent-text"
+    >
+      <Icon name="bookmark" />Preset
+    </h2>
+  </div>
   <select
+    class="mt-3 block w-full rounded-md border border-solid border-[#39393f] bg-field p-2.5 text-[#eee] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
     id="preset-select"
     aria-label="Preset"
     bind:this={select}
@@ -253,14 +262,16 @@
           : preset.name}</option
       >{/each}
   </select>
-  <div class="preset-main-actions">
+  <div class="mt-2.5 flex flex-wrap gap-2 max-[381px]:flex-col">
     <button
+      class="inline-flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-[7px] border border-solid border-accent-border bg-accent-muted px-2 py-3 text-[13px] font-medium text-accent-text outline-offset-[5px] hover:bg-accent-muted-hover focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border disabled:cursor-default disabled:opacity-35"
       id="preset-open"
       popovertarget="preset-panel"
       aria-controls="preset-panel"
       aria-expanded={panelOpen}><Icon name="library" /><span>Manage presets</span></button
     >
     <button
+      class="inline-flex min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-[7px] border border-solid border-control-border bg-control px-2 py-3 text-[13px] text-[#eee] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border enabled:hover:bg-accent-muted enabled:hover:text-accent-text disabled:cursor-default disabled:opacity-35"
       id="preset-reset"
       type="button"
       disabled={busy || !modified}
@@ -274,11 +285,18 @@
       }}><Icon name="rotate-ccw" /><span>Reset changes</span></button
     >
   </div>
-  <p id="preset-status" class="hint" class:preset-error={!!error} role="status" aria-live="polite">
+  <p
+    id="preset-status"
+    class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted empty:hidden data-[error=true]:text-error [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
+    data-error={!!error}
+    role="status"
+    aria-live="polite"
+  >
     {error}
   </p>
 </section>
 <div
+  class="fixed inset-auto m-0 w-[min(380px,calc(100vw-32px))] overflow-y-auto rounded-xl border border-solid border-[#3b3b43] bg-panel p-[22px] text-foreground shadow-[0_16px_60px_#0008] backdrop:bg-transparent max-[401px]:p-3.5"
   id="preset-panel"
   popover="auto"
   role="dialog"
@@ -289,9 +307,10 @@
     positionPanel();
   }}
 >
-  <div class="preset-panel-header">
-    <h2 id="preset-title">Manage presets</h2>
+  <div class="mb-4 flex items-center justify-between">
+    <h2 class="mt-0 mb-0 text-[18px] font-semibold" id="preset-title">Manage presets</h2>
     <button
+      class="grid size-[30px] cursor-pointer place-items-center rounded-[7px] border-0 bg-transparent p-[5px] text-[#eee] outline-offset-[5px] hover:bg-[#303038] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid disabled:cursor-default disabled:opacity-35 [&>svg]:size-5 [&>svg]:stroke-[1.6]"
       id="preset-close"
       popovertarget="preset-panel"
       popovertargetaction="hide"
@@ -299,10 +318,17 @@
       title="Close presets"><Icon name="x" /></button
     >
   </div>
-  <form id="preset-create-form" class="preset-create-form" onsubmit={create}>
-    <label class="font-label" for="preset-name">Save current settings as a new preset</label>
-    <div class="preset-create-row">
+  <form
+    id="preset-create-form"
+    class="mb-5 border-0 border-b border-solid border-[#34343c] pb-[22px]"
+    onsubmit={create}
+  >
+    <label class="block text-[13px] leading-[1.5] text-[#b8b8c2]" for="preset-name"
+      >Save current settings as a new preset</label
+    >
+    <div class="mt-2.5 flex gap-2">
       <input
+        class="m-0 block w-full min-w-0 flex-1 rounded-md border border-solid border-[#39393f] bg-field p-2.5 text-[13px] text-[#eee] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
         id="preset-name"
         type="text"
         maxlength="80"
@@ -312,6 +338,7 @@
         bind:value={name}
         disabled={busy}
       /><button
+        class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border border-solid border-accent bg-accent px-[15px] py-[9px] text-[13px] text-accent-ink outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border enabled:hover:bg-accent-hover disabled:cursor-default disabled:opacity-35"
         id="preset-save"
         type="submit"
         disabled={busy || !name.trim() || presets.length >= MAX_PRESETS}
@@ -319,10 +346,12 @@
       >
     </div>
   </form>
-  <div class="preset-library-heading">
-    <h3>Saved presets</h3>
-    <label class="preset-import-label"
+  <div class="mb-3 flex items-center justify-between">
+    <h3 class="m-0 text-[14px]">Saved presets</h3>
+    <label
+      class="relative inline-flex items-center justify-center gap-[7px] overflow-hidden rounded-[7px] border border-solid border-control-border bg-transparent px-[9px] py-1.5 text-[12px] text-[#eee] focus-within:outline-2 focus-within:outline-offset-[3px] focus-within:outline-accent focus-within:outline-solid hover:not-has-[:disabled]:border-accent-border has-[:disabled]:opacity-35"
       ><Icon name="upload" />Import preset<input
+        class="absolute inset-0 w-full cursor-pointer opacity-0 outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
         id="preset-import"
         type="file"
         accept=".json,application/json"
@@ -332,7 +361,11 @@
       /></label
     >
   </div>
-  <div id="preset-list" aria-label="Saved presets">
+  <div
+    class="grid max-h-none gap-2.5 overflow-y-auto p-0.5"
+    id="preset-list"
+    aria-label="Saved presets"
+  >
     {#key libraryVersion}
       {#each presets as preset (preset.id)}
         <PresetRow
@@ -366,17 +399,19 @@
           }}
         />
       {:else}
-        <div class="preset-empty">
-          <strong>No saved presets yet</strong>
-          <p>Save your current settings above, or import a preset to get started.</p>
+        <div class="rounded-lg border border-dashed border-[#3b3b43] px-[18px] py-6 text-center">
+          <strong class="text-[14px] font-medium text-[#c8c8d0]">No saved presets yet</strong>
+          <p class="mt-2 mb-0 text-[12px] leading-[1.6] text-[#94949f]">
+            Save your current settings above, or import a preset to get started.
+          </p>
         </div>
       {/each}
     {/key}
   </div>
   <p
     id="preset-manager-status"
-    class="hint"
-    class:preset-error={!!managerError}
+    class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted empty:hidden data-[error=true]:text-error [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
+    data-error={!!managerError}
     role="status"
     aria-live="polite"
   >
@@ -384,7 +419,7 @@
   </p>
 </div>
 <dialog
-  class="studio-dialog"
+  class="m-auto max-h-[calc(100dvh-48px)] w-[min(460px,calc(100vw-32px))] rounded-[14px] border border-solid border-[#3b3b43] bg-panel p-[26px] text-foreground shadow-[0_24px_80px_#0008] backdrop:bg-black/60 backdrop:backdrop-blur-[4px]"
   id="preset-switch-warning"
   aria-labelledby="preset-switch-title"
   aria-describedby="preset-switch-description"
@@ -394,19 +429,23 @@
     if (!switchDialog.open) select.focus();
   }}
 >
-  <h2 id="preset-switch-title">Replace modified settings?</h2>
-  <p class="dialog-description" id="preset-switch-description">
+  <h2 class="mt-0 mb-2.5 text-[20px] font-semibold" id="preset-switch-title">
+    Replace modified settings?
+  </h2>
+  <p class="m-0 text-[14px] leading-[1.6] text-[#aaaab4]" id="preset-switch-description">
     Switching to "{pendingName}" will replace your modified settings. These changes have not been
     saved to a preset.
   </p>
-  <div class="compatibility-actions">
+  <div class="mt-6 flex flex-wrap justify-end gap-2.5">
     <button
+      class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border border-solid border-control-border bg-control px-[15px] py-[9px] text-[13px] text-[#eee] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border disabled:cursor-default disabled:opacity-35"
       id="preset-switch-cancel"
       onclick={() => {
         pendingId = undefined;
         switchDialog.close();
       }}><Icon name="x" /><span>Cancel</span></button
     ><button
+      class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border border-solid border-accent bg-accent px-[15px] py-[9px] text-[13px] text-accent-ink outline-offset-[5px] hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border disabled:cursor-default disabled:opacity-35"
       id="preset-switch-confirm"
       disabled={busy}
       onclick={() => {
@@ -416,22 +455,35 @@
   </div>
 </dialog>
 <dialog
-  class="studio-dialog"
+  class="m-auto max-h-[calc(100dvh-48px)] w-[min(460px,calc(100vw-32px))] rounded-[14px] border border-solid border-[#3b3b43] bg-panel p-[26px] text-foreground shadow-[0_24px_80px_#0008] backdrop:bg-black/60 backdrop:backdrop-blur-[4px]"
   id="preset-action-dialog"
   aria-labelledby="preset-action-title"
   aria-describedby="preset-action-description"
   bind:this={actionDialog}
   onclose={closeAction}
 >
-  <h2 id="preset-action-title">{action?.title || ''}</h2>
-  <p class="dialog-description" id="preset-action-description">{action?.description || ''}</p>
-  <p id="preset-action-error" class="step-error" role="alert">{actionError}</p>
-  <div class="compatibility-actions">
-    <button id="preset-action-cancel" onclick={() => actionDialog.close()}
-      ><Icon name="x" /><span>Cancel</span></button
+  <h2 class="mt-0 mb-2.5 text-[20px] font-semibold" id="preset-action-title">
+    {action?.title || ''}
+  </h2>
+  <p class="m-0 text-[14px] leading-[1.6] text-[#aaaab4]" id="preset-action-description">
+    {action?.description || ''}
+  </p>
+  <p
+    id="preset-action-error"
+    class="my-3.5 text-[13px] leading-[1.6] [overflow-wrap:anywhere] text-error empty:hidden"
+    role="alert"
+  >
+    {actionError}
+  </p>
+  <div class="mt-6 flex flex-wrap justify-end gap-2.5">
+    <button
+      class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border border-solid border-control-border bg-control px-[15px] py-[9px] text-[13px] text-[#eee] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border disabled:cursor-default disabled:opacity-35"
+      id="preset-action-cancel"
+      onclick={() => actionDialog.close()}><Icon name="x" /><span>Cancel</span></button
     ><button
+      class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border border-solid border-accent bg-accent px-[15px] py-[9px] text-[13px] text-accent-ink outline-offset-[5px] hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border disabled:cursor-default disabled:opacity-35 data-[danger=true]:border-[#e9a29a] data-[danger=true]:bg-[#e9a29a] data-[danger=true]:text-[#301511]"
       id="preset-action-confirm"
-      class:danger={action?.label === 'Delete preset'}
+      data-danger={action?.label === 'Delete preset'}
       disabled={busy}
       onclick={() => {
         if (!action || busy) return;

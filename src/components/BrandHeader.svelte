@@ -1,11 +1,13 @@
-<header>
-  <div class="brand">
-    <span class="mark"
+<header
+  class="mb-6 flex flex-none items-center justify-between border-0 border-b border-solid border-divider py-5"
+>
+  <div class="flex items-center gap-3 text-[21px] font-[650] tracking-[-0.6px]">
+    <span class="grid size-9 flex-none place-items-center p-0 [&>img]:block [&>img]:size-9"
       ><img src="/icons/karaoke-maker-rounded.svg" width="36" height="36" alt="" /></span
     > Karaoke Maker
   </div>
   <a
-    class="repo-link"
+    class="inline-flex size-9 flex-none cursor-pointer items-center justify-center rounded-[7px] text-muted outline-offset-[5px] hover:bg-control hover:text-foreground focus-visible:bg-control focus-visible:text-foreground focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
     href="https://github.com/harry0805/amll-karaoke-maker"
     target="_blank"
     rel="noopener noreferrer"

@@ -234,3 +234,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 button:hover:not(:disabled):not(.primary):not([role=tab]):not(.transport-icon), .preset-import-label:hover:not(:has(input:disabled)) { border-color: var(--accent-border); }
 #preset-reset:hover:not(:disabled), .preset-row-actions button:hover:not(:disabled), .preset-rename:hover { background: var(--accent-muted); color: var(--accent-text); }
 #proceed-anyway:hover, #preset-switch-confirm:hover, #preset-action-confirm:not(.danger):hover, #preset-font-confirm:hover, .preset-create-row button:hover:not(:disabled) { background: var(--accent-hover); }
+
+/* The Svelte mount fills the same viewport as the studio. */
+#app { height: 100%; }

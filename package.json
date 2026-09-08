@@ -4,29 +4,35 @@
   "type": "module",
   "private": true,
   "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.0",
     "@types/bun": "latest",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "playwright": "^1.63.0",
+    "prettier": "^3.9.6",
+    "prettier-plugin-svelte": "^4.1.1",
+    "svelte-check": "^4.7.6",
+    "typescript": "~6",
+    "vite": "^8.2.2",
     "wrangler": "^4.129.0"
-  },
-  "peerDependencies": {
-    "typescript": "^7.0.2"
   },
   "dependencies": {
     "@applemusic-like-lyrics/core": "^0.5.2",
     "@applemusic-like-lyrics/ttml": "^1.0.1",
     "html-to-image": "^1.11.13",
     "lucide": "^1.42.0",
-    "mediabunny": "^1.55.7"
+    "mediabunny": "^1.55.7",
+    "svelte": "^5.57.0"
   },
   "scripts": {
-    "dev": "bun --hot index.ts",
-    "start": "bun index.ts",
-    "typecheck": "tsc --noEmit",
+    "dev": "vite",
+    "start": "vite",
+    "typecheck": "svelte-check --tsgo --tsconfig ./tsconfig.json && bun node_modules/@typescript/native/bin/tsc --noEmit",
     "test": "bun test",
     "setup:browser": "playwright install chromium",
     "build": "bun scripts/build.ts",
     "preview": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "format:ui": "prettier --write src/*.svelte src/components/*.svelte src/studio.svelte.ts"
   },
   "patchedDependencies": {
     "@applemusic-like-lyrics/core@0.5.2": "patches/@applemusic-like-lyrics%2Fcore@0.5.2.patch"

@@ -10,7 +10,7 @@ bun run dev
 ```
 
 Open http://127.0.0.1:3000. For another port, use `PORT=3210 bun run dev`.
-Bun serves the development files only. There is no export backend, FFmpeg installation, or separate Chromium process needed to use the app.
+Svelte 5 manages the UI, and Vite serves the development files. Bun runs the package scripts and tests. There is no export backend, FFmpeg installation, or separate Chromium process needed to use the app.
 
 ```sh
 bun run build
@@ -76,22 +76,32 @@ bun run setup:browser
 bun run tests/browser-export-smoke.ts http://127.0.0.1:3000
 bun run tests/opfs-smoke.ts http://127.0.0.1:3000
 bun run tests/renderer-smoke.ts http://127.0.0.1:3000
+bun run tests/ui-smoke.ts http://127.0.0.1:3000
 ```
 
 The browser export test generates synthetic media, blocks network requests during rendering, and verifies the MP4's frame count, timing, audio, colored lyrics and outlines, cancellation, resource cleanup, and variable-frame-rate silent export. FFmpeg is only used by tests to generate and inspect fixtures. `examples/demo.ttml` contains original sample lyrics.
+
+The UI test uses a fresh browser context and generated media to check settings, preset import/export and confirmations, restoration, cross-tab library updates, font requirements, playback, render cancellation, MP4 download, and saved render deletion.
+
+Type checking uses TypeScript 7 through `@typescript/native`. Svelte's checker also needs TypeScript 6 installed for compatibility, so both are development dependencies.
 
 The OPFS test writes a 32 MiB file from a reused 1 MiB block, then checks active-writer protection, simulated quota failure cleanup, interrupted-file cleanup, recovery after reload, and deletion.
 
 ## Code
 
-- `index.ts`: development asset server, plus a test-only render page.
-- `src/app.ts`: file selection, preview, settings, browser export UI.
+- `index.html` and `src/app.ts`: page entry and Svelte mounting.
+- `src/App.svelte`: studio layout, step navigation, and compatibility notices.
+- `src/components/`: preview, source/settings/render panels, preset manager, and reusable controls.
+- `src/studio.svelte.ts`: reactive UI state and calls into the existing rendering modules.
+- `vite.config.ts`: frontend development/build configuration and the development-only `/render` test page.
 - `src/browser-export.ts`: local decoding, canvas composition and encoding to a disk stream.
 - `src/lyric-snapshot.ts`: visible-group selection, CSS snapshots and outline paint bounds.
 - `src/snapshot-styles.ts`: paint/layout properties copied into snapshots.
 - `src/export-storage.ts`: OPFS writes, completion records, recovery, cleanup and saved downloads.
 - `src/lyrics.ts`: TTML compatibility and AMLL media-clock rendering shared by preview and export.
 - `tests/render-entry.ts`: isolated renderer entry for automated tests, excluded from the static build.
+
+The preview component owns its video element and animation loop. AMLL owns the lyric DOM inside its container. Encoding, snapshots, and storage remain plain TypeScript modules shared with the renderer tests. Unmounting the preview stops its loop, disposes AMLL, aborts an active export, and releases the source URL.
 
 AMLL packages are licensed AGPL-3.0-only. See the installed packages' LICENSE files and [AMLL repository](https://github.com/amll-dev/applemusic-like-lyrics) before distributing this app.
 

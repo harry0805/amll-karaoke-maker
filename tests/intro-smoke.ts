@@ -39,7 +39,7 @@ try {
   assert.equal(await opacity(0), 1);
   assert.equal(await page.locator('[class*="_interludeDots"]').evaluate(el => getComputedStyle(el).opacity), '1');
   await page.goto(origin);
-  await page.getByRole("tab", { name: "2. Settings" }).click();
+  await page.getByRole("tab", { name: "Source", exact: true }).click();
   const toggle = page.getByLabel('Show lyrics before start', { exact: true });
   assert.equal(await toggle.isChecked(), false);
   await toggle.check();

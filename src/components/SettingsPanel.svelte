@@ -8,7 +8,7 @@
   let { studio }: { studio: Studio } = $props();
   const outline = (value: number) => (value ? `${value}%` : 'Off');
   const placement = [
-    { key: 'fontSize', label: 'Text size', min: 1, max: 15, step: 0.1 },
+    { key: 'height', label: 'Lyric area', min: 1, max: 100 },
     {
       key: 'lineSpacing',
       label: 'Line spacing',
@@ -19,7 +19,6 @@
     },
     { key: 'bottom', label: 'Bottom margin', min: 0, max: 80 },
     { key: 'horizontalMargin', label: 'Horizontal margin', min: 0, max: 40 },
-    { key: 'height', label: 'Lyric area', min: 1, max: 100 },
   ] as const;
   const background = [
     { key: 'shade', label: 'Background opacity', id: 'shade-control' },
@@ -36,6 +35,16 @@
   >
     <Icon name="palette" />Lyric style
   </h2>
+  <RangeControl
+    id="fontSize"
+    label="Text size"
+    value={studio.settings.fontSize}
+    min={1}
+    max={15}
+    step={0.1}
+    disabled={studio.exporting}
+    onchange={(value) => studio.updateSetting('fontSize', value)}
+  />
   <label class="block text-[14px]"
     >Font<select
       class="mt-2 block w-full rounded-md border border-solid border-[#39393f] bg-field p-2.5 text-[#eee] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"

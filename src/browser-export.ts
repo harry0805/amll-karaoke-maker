@@ -13,7 +13,7 @@ import {
 import { snapshotLyrics } from './lyric-snapshot';
 export { snapshotLyrics };
 import { Lyrics } from './lyrics';
-import type { Settings } from './settings';
+import type { SettingsSnapshot } from './settings';
 import { writeStoredExport, type StoredExport } from './export-storage';
 
 export interface ExportProgress {
@@ -28,7 +28,7 @@ export interface ExportProgress {
 interface ExportOptions {
   video: Blob;
   ttml: string;
-  settings: Settings;
+  settings: SettingsSnapshot;
   preview: HTMLCanvasElement;
   signal: AbortSignal;
   onProgress: (progress: ExportProgress) => void;

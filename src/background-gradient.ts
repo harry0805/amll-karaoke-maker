@@ -1,8 +1,8 @@
-import type { Settings } from './settings';
+import type { PresetSettings } from './settings';
 
 /** Approximate a smoothstep fade with CSS stops, shared by preview and render. */
 export function backgroundGradient(
-  settings: Pick<Settings, 'backgroundColor' | 'shade' | 'shadeFadeStart'>,
+  settings: Pick<PresetSettings, 'backgroundColor' | 'shade' | 'shadeFadeStart'>,
 ): string {
   const rgb = [1, 3, 5]
     .map((start) => parseInt(settings.backgroundColor.slice(start, start + 2), 16))

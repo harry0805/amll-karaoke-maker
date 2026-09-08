@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { Studio } from '../studio.svelte';
+  import type { StudioState } from '../studio.svelte';
   import Icon from './Icon.svelte';
-  let { studio }: { studio: Studio } = $props();
+  let { studio }: { studio: StudioState } = $props();
 </script>
 
 <section
@@ -22,10 +22,10 @@
       id="video-file"
       type="file"
       accept="video/*,.mkv,.mov,.mp4,.webm"
-      disabled={studio.exporting}
+      disabled={studio.session.exporting}
       onchange={(event) => studio.loadVideo(event.currentTarget.files?.[0])}
     /><span class="mt-[9px] block truncate text-[14px] text-[#ababba]" id="video-name"
-      >{studio.videoFile?.name || 'Choose video'}</span
+      >{studio.session.videoFile?.name || 'Choose video'}</span
     ></label
   >
   <label
@@ -39,17 +39,17 @@
       id="ttml-file"
       type="file"
       accept=".ttml,.xml"
-      disabled={studio.exporting}
+      disabled={studio.session.exporting}
       onchange={(event) => studio.loadTTML(event.currentTarget.files?.[0])}
     /><span class="mt-[9px] block truncate text-[14px] text-[#ababba]" id="ttml-name"
-      >{studio.ttmlName}</span
+      >{studio.session.ttmlName}</span
     ></label
   >
   <p
     id="lyrics-info"
     class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
   >
-    {studio.lyricsInfo}
+    {studio.session.lyricsInfo}
   </p>
   <p
     class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
@@ -75,9 +75,9 @@
         min="-600000"
         max="600000"
         step="50"
-        value={studio.settings.offset}
-        disabled={studio.exporting}
-        oninput={(event) => studio.updateSetting('offset', event.currentTarget.valueAsNumber)}
+        value={studio.preferences.offset}
+        disabled={studio.session.exporting}
+        oninput={(event) => studio.updatePreference('offset', event.currentTarget.valueAsNumber)}
       /><span>ms</span>
     </div></label
   >
@@ -91,10 +91,10 @@
       class="m-0 accent-accent outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
       id="showLyricsBeforeStart"
       type="checkbox"
-      checked={studio.settings.showLyricsBeforeStart}
-      disabled={studio.exporting}
+      checked={studio.preferences.showLyricsBeforeStart}
+      disabled={studio.session.exporting}
       onchange={(event) =>
-        studio.updateSetting('showLyricsBeforeStart', event.currentTarget.checked)}
+        studio.updatePreference('showLyricsBeforeStart', event.currentTarget.checked)}
     /> Show lyrics before start</label
   >
   <p
@@ -110,21 +110,21 @@
   role="status"
   aria-live="polite"
 >
-  {studio.compatibilityChecking ? 'Checking render compatibility…' : ''}
+  {studio.session.compatibilityChecking ? 'Checking render compatibility…' : ''}
 </p>
 <ul
   id="source-compatibility-issues"
   class="mt-3 mb-0 pl-[18px] text-[12px] leading-[1.5] text-[#dec994] [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px] [&>li+li]:mt-2"
   aria-live="polite"
-  hidden={!studio.compatibilityWarnings.length}
+  hidden={!studio.session.compatibilityWarnings.length}
 >
-  {#each studio.compatibilityWarnings as warning}<li>{warning}</li>{/each}
+  {#each studio.session.compatibilityWarnings as warning}<li>{warning}</li>{/each}
 </ul>
 <p
   id="source-error"
   class="my-3.5 text-[13px] leading-[1.6] [overflow-wrap:anywhere] text-error"
   role="alert"
-  hidden={!studio.errors.source}
+  hidden={!studio.session.errors.source}
 >
-  {studio.errors.source}
+  {studio.session.errors.source}
 </p>

@@ -26,9 +26,11 @@ test('accepts an outline-free style and requires complete settings', () => {
     validateSettings({ ...defaults, font: 'serif', outlineWidth: 0, textColor: '#FF0088' })
       .outlineWidth,
   ).toBe(0);
-  const { showLyricsBeforeStart, textColor, duetColor, font, outlineColor, outlineWidth, ...old } =
-    defaults;
-  expect(() => validateSettings(old)).toThrow();
+  for (const key of Object.keys(defaults)) {
+    const incomplete = { ...defaults } as Partial<typeof defaults>;
+    delete incomplete[key as keyof typeof defaults];
+    expect(() => validateSettings(incomplete)).toThrow();
+  }
   expect(() => validateSettings({ ...defaults, duetColor: 'invalid' })).toThrow();
   expect(validateSettings({ ...defaults, duetColor: '#abcdef' }).duetColor).toBe('#abcdef');
 });

@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { Studio } from '../studio.svelte';
+  import type { StudioState } from '../studio.svelte';
   import Icon from './Icon.svelte';
   import SavedExports from './SavedExports.svelte';
-  let { studio }: { studio: Studio } = $props();
+  let { studio }: { studio: StudioState } = $props();
 </script>
 
 <section
@@ -39,28 +39,28 @@
     id="error"
     class="my-3.5 text-[13px] leading-[1.6] [overflow-wrap:anywhere] text-error"
     role="alert"
-    hidden={!studio.errors.export}
+    hidden={!studio.session.errors.export}
   >
-    {studio.errors.export}
+    {studio.session.errors.export}
   </p>
-  <div id="progress-area" hidden={!studio.status}>
+  <div id="progress-area" hidden={!studio.session.status}>
     <progress
       class="mt-[18px] mb-2.5 h-1.5 w-full accent-accent"
       id="progress"
       max="1"
-      value={studio.progress}
+      value={studio.session.progress}
     ></progress>
     <div class="flex items-center justify-between gap-2.5 text-[13px]">
-      <span id="status" role="status" aria-live="polite">{studio.status}</span><button
+      <span id="status" role="status" aria-live="polite">{studio.session.status}</span><button
         class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border border-solid border-control-border bg-control px-2 py-[5px] text-[12px] text-[#eee] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border disabled:cursor-default disabled:opacity-35"
         id="cancel"
-        hidden={!studio.exporting}
+        hidden={!studio.session.exporting}
         onclick={() => studio.cancel()}><Icon name="x" /><span>Cancel</span></button
       >
     </div>
   </div>
   <SavedExports
-    revision={studio.savedRevision}
-    onerror={(message) => (studio.errors.export = message)}
+    revision={studio.session.savedRevision}
+    onerror={(message) => (studio.session.errors.export = message)}
   />
 </section>

@@ -1,11 +1,11 @@
 <script lang="ts">
-  import type { Studio } from '../studio.svelte';
+  import type { StudioState } from '../studio.svelte';
   import { bundledFamilies } from '../font-catalog';
   import { fontLicenseURL } from '../font-runtime';
-  import type { Settings } from '../settings';
+  import type { PresetSettings } from '../settings';
   import Icon from './Icon.svelte';
   import RangeControl from './RangeControl.svelte';
-  let { studio }: { studio: Studio } = $props();
+  let { studio }: { studio: StudioState } = $props();
   const outline = (value: number) => (value ? `${value}%` : 'Off');
   const placement = [
     { key: 'height', label: 'Lyric area', min: 1, max: 100 },
@@ -38,21 +38,21 @@
   <RangeControl
     id="fontSize"
     label="Text size"
-    value={studio.settings.fontSize}
+    value={studio.presetSettings.fontSize}
     min={1}
     max={15}
     step={0.1}
-    disabled={studio.exporting}
-    onchange={(value) => studio.updateSetting('fontSize', value)}
+    disabled={studio.session.exporting}
+    onchange={(value) => studio.updatePresetSetting('fontSize', value)}
   />
   <label class="block text-[14px]"
     >Font<select
       class="mt-2 block w-full rounded-md border border-solid border-[#39393f] bg-field p-2.5 text-[#eee] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
       id="font"
-      value={studio.settings.font}
-      disabled={studio.exporting}
+      value={studio.presetSettings.font}
+      disabled={studio.session.exporting}
       onchange={(event) =>
-        studio.updateSetting('font', event.currentTarget.value as Settings['font'])}
+        studio.updatePresetSetting('font', event.currentTarget.value as PresetSettings['font'])}
     >
       <optgroup label="Bundled fonts"
         ><option value="nunito">Nunito</option><option value="inter">Inter</option><option
@@ -61,7 +61,7 @@
       >
       <option value="custom">Custom font</option>
       <optgroup id="device-fonts" label="Device fonts"
-        >{#each studio.deviceFonts as font}<option
+        >{#each studio.session.deviceFonts as font}<option
             value={font.key}
             disabled={!font.available}
             hidden={!font.available}>{font.name}{font.available ? '' : ' (device fallback)'}</option
@@ -72,7 +72,7 @@
   <p
     id="font-license-hint"
     class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
-    hidden={!bundledFamilies[studio.settings.font]}
+    hidden={!bundledFamilies[studio.presetSettings.font]}
   >
     <a
       class="cursor-pointer outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
@@ -82,7 +82,7 @@
       rel="noopener noreferrer">Bundled font licenses</a
     >
   </p>
-  <div class="mt-3.5" id="custom-font-controls" hidden={studio.settings.font !== 'custom'}>
+  <div class="mt-3.5" id="custom-font-controls" hidden={studio.presetSettings.font !== 'custom'}>
     <label
       class="relative mb-2.5 block cursor-pointer rounded-lg border border-solid border-[#36363d] bg-panel p-3.5 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-accent focus-within:outline-solid hover:border-accent-border"
       ><span class="flex items-center gap-2.5 text-[12px] text-muted [&>svg]:text-accent-text"
@@ -92,21 +92,21 @@
         id="custom-font-file"
         type="file"
         accept=".ttf,.otf,.woff,.woff2"
-        disabled={studio.exporting || studio.fontUploadBusy}
+        disabled={studio.session.exporting || studio.session.fontUploadBusy}
         onchange={(event) => {
           const file = event.currentTarget.files?.[0];
           event.currentTarget.value = '';
           if (file) void studio.changeCustomFont(file);
         }}
       /><span class="mt-[9px] block truncate text-[14px] text-[#ababba]" id="custom-font-name"
-        >{studio.customName || 'Choose font'}</span
+        >{studio.session.customName || 'Choose font'}</span
       ></label
     >
     <button
       class="cursor-pointer rounded-[7px] border border-solid border-control-border bg-control px-[9px] py-1.5 text-[12px] text-[#eee] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border disabled:cursor-default disabled:opacity-35"
       id="custom-font-remove"
-      hidden={!studio.customName}
-      disabled={studio.exporting || studio.fontUploadBusy}
+      hidden={!studio.session.customName}
+      disabled={studio.session.exporting || studio.session.fontUploadBusy}
       onclick={() => studio.changeCustomFont()}>Remove font</button
     >
     <p
@@ -120,7 +120,8 @@
     class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted empty:hidden [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
     role="status"
   >
-    {studio.fontError || (studio.fontLoading || studio.fontUploadBusy ? 'Loading font…' : '')}
+    {studio.session.fontError ||
+      (studio.session.fontLoading || studio.session.fontUploadBusy ? 'Loading font…' : '')}
   </p>
   <div class="mt-5 border-0 border-t border-solid border-[#303037] pt-4">
     <h3 class="m-0 text-[14px] font-medium">Colors and outline</h3>
@@ -130,30 +131,30 @@
           class="mt-2 block h-[38px] w-full cursor-pointer rounded-md border border-solid border-[#39393f] bg-field p-[3px] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
           id="textColor"
           type="color"
-          value={studio.settings.textColor}
-          disabled={studio.exporting}
-          oninput={(event) => studio.updateSetting('textColor', event.currentTarget.value)}
+          value={studio.presetSettings.textColor}
+          disabled={studio.session.exporting}
+          oninput={(event) => studio.updatePresetSetting('textColor', event.currentTarget.value)}
         /></label
       ><label class="flex-1 text-[14px]"
         >Outline color<input
           class="mt-2 block h-[38px] w-full cursor-pointer rounded-md border border-solid border-[#39393f] bg-field p-[3px] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
           id="outlineColor"
           type="color"
-          value={studio.settings.outlineColor}
-          disabled={studio.exporting}
-          oninput={(event) => studio.updateSetting('outlineColor', event.currentTarget.value)}
+          value={studio.presetSettings.outlineColor}
+          disabled={studio.session.exporting}
+          oninput={(event) => studio.updatePresetSetting('outlineColor', event.currentTarget.value)}
         /></label
       >
     </div>
     <RangeControl
       id="outlineWidth"
       label="Outline thickness"
-      value={studio.settings.outlineWidth}
+      value={studio.presetSettings.outlineWidth}
       min={0}
       max={12}
       format={outline}
-      disabled={studio.exporting}
-      onchange={(value) => studio.updateSetting('outlineWidth', value)}
+      disabled={studio.session.exporting}
+      onchange={(value) => studio.updatePresetSetting('outlineWidth', value)}
     />
     <p
       class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
@@ -167,15 +168,15 @@
       id="useDuetColors"
       type="checkbox"
       aria-controls="duet-style"
-      checked={studio.settings.useDuetColors}
-      disabled={studio.exporting}
-      onchange={(event) => studio.updateSetting('useDuetColors', event.currentTarget.checked)}
+      checked={studio.presetSettings.useDuetColors}
+      disabled={studio.session.exporting}
+      onchange={(event) => studio.updatePresetSetting('useDuetColors', event.currentTarget.checked)}
     /> Use different settings for duet</label
   >
   <div
     id="duet-style"
     class="mt-5 border-0 border-t border-solid border-[#303037] pt-4"
-    hidden={!studio.settings.useDuetColors}
+    hidden={!studio.presetSettings.useDuetColors}
   >
     <h3 class="m-0 text-[14px] font-medium">Duet colors and outline</h3>
     <div class="mt-4 flex gap-[18px]">
@@ -184,30 +185,31 @@
           class="mt-2 block h-[38px] w-full cursor-pointer rounded-md border border-solid border-[#39393f] bg-field p-[3px] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
           id="duetColor"
           type="color"
-          value={studio.settings.duetColor}
-          disabled={studio.exporting}
-          oninput={(event) => studio.updateSetting('duetColor', event.currentTarget.value)}
+          value={studio.presetSettings.duetColor}
+          disabled={studio.session.exporting}
+          oninput={(event) => studio.updatePresetSetting('duetColor', event.currentTarget.value)}
         /></label
       ><label class="flex-1 text-[14px]"
         >Duet outline color<input
           class="mt-2 block h-[38px] w-full cursor-pointer rounded-md border border-solid border-[#39393f] bg-field p-[3px] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
           id="duetOutlineColor"
           type="color"
-          value={studio.settings.duetOutlineColor}
-          disabled={studio.exporting}
-          oninput={(event) => studio.updateSetting('duetOutlineColor', event.currentTarget.value)}
+          value={studio.presetSettings.duetOutlineColor}
+          disabled={studio.session.exporting}
+          oninput={(event) =>
+            studio.updatePresetSetting('duetOutlineColor', event.currentTarget.value)}
         /></label
       >
     </div>
     <RangeControl
       id="duetOutlineWidth"
       label="Duet outline thickness"
-      value={studio.settings.duetOutlineWidth}
+      value={studio.presetSettings.duetOutlineWidth}
       min={0}
       max={12}
       format={outline}
-      disabled={studio.exporting}
-      onchange={(value) => studio.updateSetting('duetOutlineWidth', value)}
+      disabled={studio.session.exporting}
+      onchange={(value) => studio.updatePresetSetting('duetOutlineWidth', value)}
     />
   </div>
 </section>
@@ -223,9 +225,9 @@
     <RangeControl
       id={control.key}
       {...control}
-      value={studio.settings[control.key]}
-      disabled={studio.exporting}
-      onchange={(value) => studio.updateSetting(control.key, value)}
+      value={studio.presetSettings[control.key]}
+      disabled={studio.session.exporting}
+      onchange={(value) => studio.updatePresetSetting(control.key, value)}
     />
   {/each}
 </section>
@@ -239,9 +241,10 @@
         class="mt-2 block h-[38px] w-full cursor-pointer rounded-md border border-solid border-[#39393f] bg-field p-[3px] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
         id="backgroundColor"
         type="color"
-        value={studio.settings.backgroundColor}
-        disabled={studio.exporting}
-        oninput={(event) => studio.updateSetting('backgroundColor', event.currentTarget.value)}
+        value={studio.presetSettings.backgroundColor}
+        disabled={studio.session.exporting}
+        oninput={(event) =>
+          studio.updatePresetSetting('backgroundColor', event.currentTarget.value)}
       /></label
     >
   </div>
@@ -252,9 +255,9 @@
       label={control.label}
       min={0}
       max={100}
-      value={studio.settings[control.key]}
-      disabled={studio.exporting}
-      onchange={(value) => studio.updateSetting(control.key, value)}
+      value={studio.presetSettings[control.key]}
+      disabled={studio.session.exporting}
+      onchange={(value) => studio.updatePresetSetting(control.key, value)}
     />
   {/each}
 </section>
@@ -262,7 +265,7 @@
   id="settings-error"
   class="my-3.5 text-[13px] leading-[1.6] [overflow-wrap:anywhere] text-error"
   role="alert"
-  hidden={!studio.errors.settings}
+  hidden={!studio.session.errors.settings}
 >
-  {studio.errors.settings}
+  {studio.session.errors.settings}
 </p>

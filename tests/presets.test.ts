@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { defaults, appearanceSettings, applyAppearance } from '../src/settings';
+import { defaults, pickPresetSettings, applyPresetSettings } from '../src/settings';
 import {
   parsePresets,
   serializePresets,
@@ -25,11 +25,14 @@ test('presets round-trip appearance and exclude source timing', () => {
   };
   const [preset] = parsePresets(serializePresets([{ name: 'Duet', settings }]));
   expect(preset!.name).toBe('Duet');
-  expect(preset!.settings).toEqual(appearanceSettings(settings));
+  expect(preset!.settings).toEqual(pickPresetSettings(settings));
   expect(preset!.settings).not.toHaveProperty('offset');
   expect(preset!.settings).not.toHaveProperty('showLyricsBeforeStart');
   expect(
-    applyAppearance({ ...defaults, offset: 900, showLyricsBeforeStart: true }, preset!.settings),
+    applyPresetSettings(
+      { ...defaults, offset: 900, showLyricsBeforeStart: true },
+      preset!.settings,
+    ),
   ).toEqual({ ...settings, offset: 900 });
 });
 test('invalid imports are rejected as a whole', () => {
@@ -97,60 +100,15 @@ test('merges resolve ID collisions only', () => {
   expect(merged[0]!.id).not.toBe(merged[1]!.id);
 });
 
-import {
-  CURRENT_SETTINGS_KEY,
-  restoreCurrentSettings,
-  persistCurrentSettings,
-} from '../src/presets';
-function memoryStorage() {
-  const values = new Map<string, string>();
-  return {
-    getItem: (key: string) => values.get(key) ?? null,
-    setItem: (key: string, value: string) => {
-      values.set(key, value);
-    },
-  };
-}
-test('session settings remain independent while new sessions inherit the last local update', () => {
-  const local = memoryStorage(),
-    first = memoryStorage(),
-    second = memoryStorage();
-  persistCurrentSettings({ ...defaults, offset: 100 }, first, local);
-  expect(restoreCurrentSettings(second, local)!.offset).toBe(100);
-  persistCurrentSettings({ ...defaults, offset: 200 }, first, local);
-  expect(restoreCurrentSettings(second, local)!.offset).toBe(100);
-  expect(restoreCurrentSettings(first, local)!.offset).toBe(200);
-  expect(restoreCurrentSettings(memoryStorage(), local)!.offset).toBe(200);
-});
-test('invalid session data falls back to local, and storage failures do not prevent the other write', () => {
-  const local = memoryStorage(),
-    session = memoryStorage();
-  persistCurrentSettings(defaults, session, local);
-  session.setItem(CURRENT_SETTINGS_KEY, 'broken');
-  expect(restoreCurrentSettings(session, local)).toEqual(defaults);
-  const broken = {
-    setItem() {
-      throw new Error('quota');
-    },
-  };
-  expect(() => persistCurrentSettings({ ...defaults, offset: 300 }, broken, local)).toThrow();
-  expect(restoreCurrentSettings(memoryStorage(), local)!.offset).toBe(300);
-});
-
 import { presetLabel } from '../src/presets';
 test('selected preset labels reflect changes and revert when settings match', () => {
-  expect(presetLabel('Default', defaults, { ...defaults, offset: 500 })).toBe('Default');
+  const sourceChanged = { ...defaults, offset: 500, showLyricsBeforeStart: true };
+  expect(presetLabel('Default', defaults, sourceChanged)).toBe('Default');
   expect(presetLabel('Duet', defaults, { ...defaults, duetColor: '#ffaa00' })).toBe(
     'Duet (Modified)',
   );
   expect(presetLabel('Duet', defaults, { ...defaults })).toBe('Duet');
-  expect(
-    presetLabel('Duet', appearanceSettings(defaults), {
-      ...defaults,
-      offset: 500,
-      showLyricsBeforeStart: true,
-    }),
-  ).toBe('Duet');
+  expect(presetLabel('Duet', pickPresetSettings(defaults), sourceChanged)).toBe('Duet');
 });
 
 test('malformed JSON imports have an actionable error', () => {
@@ -158,4 +116,15 @@ test('malformed JSON imports have an actionable error', () => {
     'This file is not valid JSON. Choose a preset exported from Karaoke Maker.',
   );
   expect(() => parsePresets('null')).toThrow('Choose a Karaoke Maker preset file.');
+});
+
+test('applying appearance ignores extra source and runtime fields', () => {
+  const current = { ...defaults, offset: 1200, showLyricsBeforeStart: true };
+  const incoming = { ...defaults, fontSize: 8, exporting: true };
+  const applied = applyPresetSettings(current, incoming);
+  expect(applied.offset).toBe(1200);
+  expect(applied.showLyricsBeforeStart).toBe(true);
+  expect(applied.fontSize).toBe(8);
+  expect(applied).not.toHaveProperty('exporting');
+  expect(pickPresetSettings(incoming)).not.toHaveProperty('exporting');
 });

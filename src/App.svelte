@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { tick } from 'svelte';
-  import { Studio } from './studio.svelte';
+  import { onMount, tick, untrack } from 'svelte';
+  import { StudioState } from './studio.svelte';
   import { deviceFontNames } from './font-catalog';
-  import type { Settings } from './settings';
+  import { applyPresetSettings, type PresetSettings } from './settings';
+  import { restoreCurrentSettings, persistCurrentSettings } from './settings-storage';
   import BrandHeader from './components/BrandHeader.svelte';
   import StudioFooter from './components/StudioFooter.svelte';
   import Preview from './components/Preview.svelte';
@@ -12,7 +13,33 @@
   import ExportPanel from './components/ExportPanel.svelte';
   import Icon from './components/Icon.svelte';
 
-  const studio = new Studio();
+  const studio = new StudioState();
+  let settingsRestored = $state(false);
+  let storageError = $state('');
+  onMount(() => {
+    try {
+      const saved = restoreCurrentSettings(sessionStorage, localStorage);
+      if (saved) studio.configure({ ...saved.presetSettings, ...saved.preferences });
+    } catch {
+      storageError = 'Browser storage is unavailable. Settings may not survive closing this tab.';
+    }
+    settingsRestored = true;
+  });
+  $effect(() => {
+    if (!settingsRestored) return;
+    const current = {
+      presetSettings: { ...studio.presetSettings },
+      preferences: { ...studio.preferences },
+    };
+    untrack(() => {
+      try {
+        persistCurrentSettings(current, sessionStorage, localStorage);
+        storageError = '';
+      } catch (error) {
+        storageError = String(error);
+      }
+    });
+  });
   const steps = [
     { id: 'source', label: 'Source', icon: 'folder-open' },
     { id: 'settings', label: 'Settings', icon: 'sliders-horizontal' },
@@ -59,12 +86,12 @@
     event.preventDefault();
     void requestStep(target, true);
   }
-  function applySettings(settings: Settings) {
-    studio.configure(settings);
+  function applySettings(settings: PresetSettings) {
+    studio.configure(applyPresetSettings(studio.settingsSnapshot, settings));
   }
   $effect(() => {
-    const deviceName = deviceFontNames[studio.settings.font as keyof typeof deviceFontNames];
-    const font = studio.deviceFonts.find((font) => font.key === studio.settings.font);
+    const deviceName = deviceFontNames[studio.presetSettings.font as keyof typeof deviceFontNames];
+    const font = studio.session.deviceFonts.find((font) => font.key === studio.presetSettings.font);
     if (deviceName && font && !font.available) {
       missingFont = `This preset uses "${deviceName}", which is unavailable on this device. Install it on your system and reload this page, or choose another font in Settings. A fallback font is being used for now.`;
       const frame = requestAnimationFrame(() => fontDialog.showModal());
@@ -75,7 +102,7 @@
 
 <svelte:window
   onbeforeunload={(event) => {
-    if (studio.exporting) {
+    if (studio.session.exporting) {
       event.preventDefault();
       event.returnValue = '';
     }
@@ -135,12 +162,15 @@
           hidden={currentStep !== 1}
         >
           <PresetManager
-            settings={studio.settings}
-            busy={studio.exporting}
+            settings={studio.presetSettings}
+            busy={studio.session.exporting}
             active={currentStep === 1}
             onapply={applySettings}
           />
           <SettingsPanel {studio} />
+          <p role="status" class="mt-3 text-[13px] text-muted" hidden={!storageError}>
+            {storageError}
+          </p>
         </div>
         <div
           id="step-export"
@@ -174,7 +204,7 @@
   aria-describedby="compatibility-description"
   bind:this={compatibilityDialog}
   onclose={() => {
-    if (!studio.compatibilityAccepted) tabs[0]?.focus();
+    if (!studio.session.compatibilityAccepted) tabs[0]?.focus();
   }}
 >
   <h2 class="mt-0 mb-2.5 text-[20px] font-semibold" id="compatibility-title">
@@ -187,7 +217,7 @@
     class="mt-5 mb-6 pl-[18px] text-[13px] leading-[1.6] text-[#dec994] [&>li+li]:mt-2.5"
     id="compatibility-reasons"
   >
-    {#each studio.compatibilityWarnings as warning}<li>{warning}</li>{/each}
+    {#each studio.session.compatibilityWarnings as warning}<li>{warning}</li>{/each}
   </ul>
   <div class="flex flex-wrap justify-end gap-2.5">
     <button
@@ -198,7 +228,7 @@
       class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border border-solid border-accent bg-accent px-[15px] py-[9px] text-[13px] text-accent-ink outline-offset-[5px] hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border disabled:cursor-default disabled:opacity-35"
       id="proceed-anyway"
       onclick={() => {
-        studio.compatibilityAccepted = true;
+        studio.session.compatibilityAccepted = true;
         compatibilityDialog.close();
         void selectStep(pendingStep, true);
       }}>Proceed anyway</button

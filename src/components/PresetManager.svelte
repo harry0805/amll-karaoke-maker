@@ -1,13 +1,9 @@
 <script lang="ts">
-  import { onMount, tick, untrack } from 'svelte';
-  import { defaults, appearanceSettings, applyAppearance, type Settings } from '../settings';
+  import { onMount, tick } from 'svelte';
+  import { presetDefaults as defaults, pickPresetSettings, type PresetSettings } from '../settings';
   import {
     parseStoredPresets,
-    serializeStoredPresets,
     presetLabel,
-    restoreCurrentSettings,
-    persistCurrentSettings,
-    PRESETS_KEY,
     MAX_PRESETS,
     mergePresets,
     parsePresets,
@@ -15,6 +11,13 @@
     serializePresets,
     type Preset,
   } from '../presets';
+  import {
+    PRESETS_KEY,
+    restorePresetLibrary,
+    persistPresetLibrary,
+    restorePresetSelection,
+    persistPresetSelection,
+  } from '../preset-storage';
   import Icon from './Icon.svelte';
   import PresetRow from './PresetRow.svelte';
 
@@ -23,14 +26,16 @@
     busy,
     active,
     onapply,
-  }: { settings: Settings; busy: boolean; active: boolean; onapply: (settings: Settings) => void } =
-    $props();
-  const selectionKey = 'karaoke-studio.selected-preset.v2';
+  }: {
+    settings: PresetSettings;
+    busy: boolean;
+    active: boolean;
+    onapply: (settings: PresetSettings) => void;
+  } = $props();
   let presets = $state<Preset[]>([]);
   let activeId = $state('default');
   let name = $state('');
   let importing = $state(false);
-  let restored = $state(false);
   let error = $state('');
   let managerError = $state('');
   let panelOpen = $state(false);
@@ -62,10 +67,10 @@
     }
   }
   function rememberSelection() {
-    for (const storage of [sessionStorage, localStorage]) storage.setItem(selectionKey, activeId);
+    persistPresetSelection(activeId, sessionStorage, localStorage);
   }
   function persist(next: Preset[], id = activeId) {
-    localStorage.setItem(PRESETS_KEY, serializeStoredPresets(next));
+    persistPresetLibrary(next, localStorage);
     presets = next;
     activeId = next.some((p) => p.id === id) ? id : 'default';
     rememberSelection();
@@ -76,7 +81,7 @@
     if (id !== 'default' && !preset)
       throw new Error('That preset is no longer available. Choose another preset.');
     activeId = id;
-    onapply(applyAppearance(settings, preset?.settings || defaults));
+    onapply(pickPresetSettings(preset?.settings || defaults));
     rememberSelection();
     error = '';
   }
@@ -138,7 +143,7 @@
       const preset = {
         id: crypto.randomUUID(),
         name: presetName(name),
-        settings: appearanceSettings(settings),
+        settings: pickPresetSettings(settings),
       };
       persist([...presets, preset], preset.id);
       name = '';
@@ -192,41 +197,16 @@
   }
   onMount(() => {
     try {
-      const saved = localStorage.getItem(PRESETS_KEY);
-      if (saved) {
-        presets = parseStoredPresets(saved);
-        const normalized = serializeStoredPresets(presets);
-        if (normalized !== saved) localStorage.setItem(PRESETS_KEY, normalized);
-      }
+      presets = restorePresetLibrary(localStorage);
     } catch {
       error =
         'Saved settings could not be restored. You can still adjust settings and import presets.';
     }
     try {
-      const current = restoreCurrentSettings(sessionStorage, localStorage);
-      if (current) onapply(current);
+      activeId = restorePresetSelection(presets, sessionStorage, localStorage);
     } catch {
-      error = 'Session storage is unavailable. Settings may not survive closing this tab.';
+      /* Presets remain usable without storage. */
     }
-    try {
-      const selected =
-        sessionStorage.getItem(selectionKey) || localStorage.getItem(selectionKey) || 'default';
-      activeId = presets.some((p) => p.id === selected) ? selected : 'default';
-      sessionStorage.setItem(selectionKey, activeId);
-    } catch {
-      /* Settings remain usable without storage. */
-    }
-    restored = true;
-  });
-  $effect(() => {
-    if (!restored) return;
-    const current = { ...settings };
-    untrack(() =>
-      safely(() => {
-        persistCurrentSettings(current, sessionStorage, localStorage);
-        rememberSelection();
-      }),
-    );
   });
   $effect(() => {
     if (!active && panel) panel.hidePopover();
@@ -384,7 +364,7 @@
               () =>
                 persist(
                   presets.map((p) =>
-                    p.id === preset.id ? { ...p, settings: appearanceSettings(settings) } : p,
+                    p.id === preset.id ? { ...p, settings: pickPresetSettings(settings) } : p,
                   ),
                 ),
             );

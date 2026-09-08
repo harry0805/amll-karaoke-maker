@@ -1,18 +1,10 @@
-import {
-  defaults,
-  appearanceSettings,
-  validateSettings,
-  type PresetSettings,
-  type Settings,
-} from './settings';
+import { defaults, pickPresetSettings, validateSettings, type PresetSettings } from './settings';
 
 export interface Preset {
   id: string;
   name: string;
   settings: PresetSettings;
 }
-export const CURRENT_SETTINGS_KEY = 'karaoke-studio.settings.v1';
-export const PRESETS_KEY = 'karaoke-studio.presets.v1';
 const FORMAT = 'karaoke-studio-presets';
 const STORAGE_FORMAT = 'karaoke-studio-preset-library';
 export const MAX_PRESETS = 100;
@@ -118,52 +110,8 @@ export function parseStoredPresets(text: string): Preset[] {
   });
 }
 
-export function restoreCurrentSettings(
-  session: Pick<Storage, 'getItem' | 'setItem'>,
-  local: Pick<Storage, 'getItem'>,
-): Settings | undefined {
-  for (const storage of [session, local]) {
-    try {
-      const text = storage.getItem(CURRENT_SETTINGS_KEY);
-      if (!text) continue;
-      const settings = validateSettings(JSON.parse(text));
-      // Seed this tab once. Other tabs updating local storage must not replace it.
-      if (storage !== session) {
-        try {
-          session.setItem(CURRENT_SETTINGS_KEY, JSON.stringify(settings));
-        } catch {
-          /* Still restore the local settings. */
-        }
-      }
-      return settings;
-    } catch {
-      /* Try local storage if the session entry is invalid. */
-    }
-  }
-  return undefined;
-}
-export function persistCurrentSettings(
-  settings: Settings,
-  session: Pick<Storage, 'setItem'>,
-  local: Pick<Storage, 'setItem'>,
-) {
-  const text = JSON.stringify(validateSettings(settings));
-  let failed = false;
-  for (const storage of [session, local]) {
-    try {
-      storage.setItem(CURRENT_SETTINGS_KEY, text);
-    } catch {
-      failed = true;
-    }
-  }
-  if (failed)
-    throw new Error(
-      'Some browser storage is unavailable. Settings may not survive closing this tab.',
-    );
-}
-
-export function presetLabel(name: string, saved: PresetSettings, current: Settings): string {
-  const modified = (Object.keys(appearanceSettings(current)) as (keyof PresetSettings)[]).some(
+export function presetLabel(name: string, saved: PresetSettings, current: PresetSettings): string {
+  const modified = (Object.keys(pickPresetSettings(current)) as (keyof PresetSettings)[]).some(
     (key) => saved[key] !== current[key],
   );
   return name + (modified ? ' (Modified)' : '');
@@ -171,7 +119,7 @@ export function presetLabel(name: string, saved: PresetSettings, current: Settin
 
 function validatePresetSettings(input: unknown): PresetSettings {
   if (!input || typeof input !== 'object') throw new Error('Invalid preset settings.');
-  return appearanceSettings(
+  return pickPresetSettings(
     validateSettings({
       offset: defaults.offset,
       showLyricsBeforeStart: defaults.showLyricsBeforeStart,

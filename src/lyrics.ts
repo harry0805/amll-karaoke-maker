@@ -2,7 +2,7 @@ import { customFontName, loadLyricFont, lyricFontCSS, setStageFontCSS } from './
 import { backgroundGradient } from './background-gradient';
 import { DomLyricPlayer, type LyricLine } from '@applemusic-like-lyrics/core';
 import { parseTTML } from '@applemusic-like-lyrics/ttml';
-import { fonts, type Settings } from './settings';
+import { fonts, type SettingsSnapshot } from './settings';
 
 const LINE_FADE_MS = 250;
 
@@ -49,7 +49,7 @@ export function parseLyrics(text: string): LyricLine[] {
 
 export class Lyrics {
   player = new DomLyricPlayer();
-  settings: Settings;
+  settings: SettingsSnapshot;
   private previous = -1;
   private fontText = '';
   private fontGeneration = 0;
@@ -68,7 +68,7 @@ export class Lyrics {
   constructor(
     private stage: HTMLElement,
     private container: HTMLElement,
-    settings: Settings,
+    settings: SettingsSnapshot,
   ) {
     this.settings = settings;
     // Apply the outline after the words have been masked and animated. A text
@@ -117,7 +117,7 @@ export class Lyrics {
     this.player.dispose();
     this.outlineSVG.remove();
   }
-  configure(settings: Settings) {
+  configure(settings: SettingsSnapshot) {
     this.settings = settings;
     this.updateIntro();
     const container = this.stage.querySelector<HTMLElement>('#lyrics')!;

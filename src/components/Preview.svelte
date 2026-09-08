@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import type { Studio } from '../studio.svelte';
+  import type { StudioState } from '../studio.svelte';
   import Icon from './Icon.svelte';
 
-  let { studio }: { studio: Studio } = $props();
+  let { studio }: { studio: StudioState } = $props();
   let stage: HTMLDivElement;
   let container: HTMLDivElement;
   let video: HTMLVideoElement;
@@ -15,9 +15,13 @@
   let height = $state(0);
   const formatTime = (n: number) =>
     `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, '0')}`;
-  const displayedTime = $derived(studio.previewVisible ? studio.renderTime : position);
-  const displayedDuration = $derived(studio.previewVisible ? studio.renderDuration : duration);
-  const disabled = $derived(!studio.loaded || studio.exporting);
+  const displayedTime = $derived(
+    studio.session.previewVisible ? studio.session.renderTime : position,
+  );
+  const displayedDuration = $derived(
+    studio.session.previewVisible ? studio.session.renderDuration : duration,
+  );
+  const disabled = $derived(!studio.session.loaded || studio.session.exporting);
 
   onMount(() => {
     studio.attach(stage, container, video, canvas);
@@ -28,11 +32,11 @@
       try {
         await studio.frame(video.paused ? 0 : now - previous);
       } catch (error) {
-        studio.errors.source = String(error);
+        studio.session.errors.source = String(error);
       }
       previous = now;
       if (stopped) return;
-      if (studio.loaded && !studio.exporting) position = video.currentTime;
+      if (studio.session.loaded && !studio.session.exporting) position = video.currentTime;
       frame = requestAnimationFrame(tick);
     }
     frame = requestAnimationFrame(tick);
@@ -45,15 +49,15 @@
 
   function metadata() {
     if (!Number.isFinite(video.duration) || !video.videoWidth) {
-      studio.videoError = true;
-      studio.errors.source = 'Cannot determine the video duration. Try an MP4 video.';
+      studio.session.videoError = true;
+      studio.session.errors.source = 'Cannot determine the video duration. Try an MP4 video.';
       return;
     }
     duration = video.duration;
     width = video.videoWidth;
     height = video.videoHeight;
     position = video.currentTime;
-    studio.loaded = true;
+    studio.session.loaded = true;
     void studio.resizeLyrics();
   }
   async function togglePlayback() {
@@ -62,7 +66,7 @@
       if (video.paused) await video.play();
       else video.pause();
     } catch (error) {
-      studio.errors.source = String(error);
+      studio.session.errors.source = String(error);
     }
   }
   function seek(time: number) {
@@ -126,9 +130,9 @@
           onended={() => (paused = true)}
           onseeked={() => void studio.frame(0, true)}
           onerror={() => {
-            studio.loaded = false;
-            studio.videoError = true;
-            studio.errors.source =
+            studio.session.loaded = false;
+            studio.session.videoError = true;
+            studio.session.errors.source =
               'This browser cannot preview that video codec. Convert the source to an H.264 MP4 and try again.';
           }}
         ></video>
@@ -136,7 +140,7 @@
           class="absolute inset-0 z-5 size-full"
           id="export-preview"
           bind:this={canvas}
-          hidden={!studio.previewVisible}
+          hidden={!studio.session.previewVisible}
           aria-label="Frame being rendered"
         ></canvas>
         <div id="shade"></div>
@@ -145,7 +149,7 @@
       <div
         class="relative inset-0 flex w-full flex-col items-center justify-center self-stretch bg-[radial-gradient(ellipse_at_50%_80%,#23242a,#111114_75%)] p-6 text-center max-studio:min-h-[calc((100cqw-2px)*9/16)]"
         id="empty"
-        hidden={studio.loaded}
+        hidden={studio.session.loaded}
       >
         <span
           class="text-[36px] text-accent-text max-phone:hidden [&>svg]:size-10 [&>svg]:stroke-[1.4]"
@@ -177,7 +181,7 @@
     />
     <span
       class="min-w-0 text-[12px] whitespace-normal text-[#b0b0b8] max-phone:text-[10px]"
-      id="media-info">{studio.loaded ? `${width} × ${height}` : 'No video selected'}</span
+      id="media-info">{studio.session.loaded ? `${width} × ${height}` : 'No video selected'}</span
     >
     <div class="flex items-center gap-2.5 max-phone:gap-0">
       <button

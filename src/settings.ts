@@ -1,7 +1,13 @@
 import { fonts } from './font-catalog';
 export { fonts } from './font-catalog';
-export interface Settings {
+/** Persisted choices that presets never replace. */
+export interface Preferences {
+  offset: number;
   showLyricsBeforeStart: boolean;
+}
+
+/** Values included when saving or applying a preset, regardless of the control location. */
+export interface PresetSettings {
   useDuetColors: boolean;
   shadeHeight: number;
   shadeFadeStart: number;
@@ -12,7 +18,6 @@ export interface Settings {
   bottom: number;
   horizontalMargin: number;
   height: number;
-  offset: number;
   shade: number;
   backgroundColor: string;
   textColor: string;
@@ -21,8 +26,11 @@ export interface Settings {
   outlineColor: string;
   outlineWidth: number;
 }
-export const defaults: Settings = {
-  showLyricsBeforeStart: false,
+/** Flat data passed to the lyrics engine and retained in the v1 storage format. */
+export type SettingsSnapshot = PresetSettings & Preferences;
+
+export const preferenceDefaults: Preferences = { offset: 0, showLyricsBeforeStart: false };
+export const presetDefaults: PresetSettings = {
   useDuetColors: false,
   shadeHeight: 34,
   shadeFadeStart: 15,
@@ -33,7 +41,6 @@ export const defaults: Settings = {
   bottom: 0,
   horizontalMargin: 5,
   height: 25,
-  offset: 0,
   shade: 70,
   backgroundColor: '#000000',
   textColor: '#ffffff',
@@ -42,9 +49,11 @@ export const defaults: Settings = {
   outlineColor: '#000000',
   outlineWidth: 10,
 };
-export function validateSettings(input: unknown): Settings {
+export const defaults: SettingsSnapshot = { ...presetDefaults, ...preferenceDefaults };
+
+export function validateSettings(input: unknown): SettingsSnapshot {
   if (!input || typeof input !== 'object') throw new Error('Invalid export settings.');
-  const s = input as Settings;
+  const s = input as SettingsSnapshot;
   for (const [key, min, max] of [
     ['fontSize', 1, 15],
     ['lineSpacing', 0.75, 1.5],
@@ -98,15 +107,34 @@ export function validateSettings(input: unknown): Settings {
   };
 }
 
-export type PresetSettings = Omit<Settings, 'offset' | 'showLyricsBeforeStart'>;
-export function appearanceSettings(settings: Settings): PresetSettings {
-  const { offset, showLyricsBeforeStart, ...appearance } = settings;
-  return appearance;
+/** Copy only preset fields, even when the input has source or runtime fields. */
+export function pickPresetSettings(settings: PresetSettings): PresetSettings {
+  return Object.fromEntries(
+    (Object.keys(presetDefaults) as (keyof PresetSettings)[]).map((key) => [key, settings[key]]),
+  ) as unknown as PresetSettings;
 }
-export function applyAppearance(current: Settings, appearance: PresetSettings): Settings {
+export function applyPresetSettings(
+  current: SettingsSnapshot,
+  appearance: PresetSettings,
+): SettingsSnapshot {
+  return { ...current, ...pickPresetSettings(appearance) };
+}
+
+/** The two persisted groups. SessionState is deliberately absent. */
+export interface PersistedSettings {
+  presetSettings: PresetSettings;
+  preferences: Preferences;
+}
+
+export function pickPreferences(settings: Preferences): Preferences {
+  return Object.fromEntries(
+    (Object.keys(preferenceDefaults) as (keyof Preferences)[]).map((key) => [key, settings[key]]),
+  ) as unknown as Preferences;
+}
+
+export function splitSettings(settings: SettingsSnapshot): PersistedSettings {
   return {
-    ...appearance,
-    offset: current.offset,
-    showLyricsBeforeStart: current.showLyricsBeforeStart,
+    presetSettings: pickPresetSettings(settings),
+    preferences: pickPreferences(settings),
   };
 }

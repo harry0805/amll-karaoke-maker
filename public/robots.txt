@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://karakoe.hproject.xyz/sitemap.xml
+Sitemap: https://karaoke.hproject.xyz/sitemap.xml

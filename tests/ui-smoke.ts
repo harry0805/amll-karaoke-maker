@@ -59,6 +59,12 @@ try {
     source,
   ]);
   const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  // Headless Chromium's user agent can trigger the app's browser warning.
+  context.on('page', async (page) => {
+    await page.addLocatorHandler(page.locator('#browser-support-warning[open]'), async () => {
+      await page.locator('#browser-support-proceed').click();
+    });
+  });
   const page = await context.newPage();
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(origin);
@@ -69,6 +75,12 @@ try {
   await page.locator('#offset').fill('150');
   await page.getByLabel('Show lyrics before start', { exact: true }).check();
   await step(page, 'Settings');
+  assert.equal(await page.locator('#visibleLines').inputValue(), '2');
+  assert.equal(await page.locator('#height').inputValue(), '0');
+  await page.locator('#visibleLines').fill('0');
+  await text(page, 'visibleLines-value', 'Unlimited');
+  await page.locator('#visibleLines').fill('4');
+  await page.locator('#height').fill('20');
   await page.getByRole('slider', { name: 'Text size', exact: true }).fill('7');
   await text(page, 'fontSize-value', '7%');
   assert.equal(
@@ -96,6 +108,8 @@ try {
   await (await download).saveAs(presetFile);
   const portable = await Bun.file(presetFile).json();
   assert.equal(portable.presets[0].settings.fontSize, 7);
+  assert.equal(portable.presets[0].settings.visibleLines, 4);
+  assert.equal(portable.presets[0].settings.height, 20);
   assert.equal(portable.presets[0].settings.offset, undefined);
   await page.locator('#preset-close').click();
   await page.locator('#fontSize').fill('8');
@@ -110,6 +124,8 @@ try {
   await page.locator('#preset-select').selectOption('default');
   await page.locator('#preset-switch-confirm').click();
   await text(page, 'fontSize-value', '5%');
+  assert.equal(await page.locator('#visibleLines').inputValue(), '2');
+  assert.equal(await page.locator('#height').inputValue(), '0');
   assert.equal(await page.locator('#offset').inputValue(), '150');
   assert.equal(await page.locator('#showLyricsBeforeStart').isChecked(), true);
   await page.locator('#preset-select').selectOption({ label: 'UI renamed' });
@@ -119,6 +135,8 @@ try {
   await text(page, 'fontSize-value', '7%');
   await page.reload();
   await step(page, 'Settings');
+  assert.equal(await page.locator('#visibleLines').inputValue(), '4');
+  assert.equal(await page.locator('#height').inputValue(), '20');
   await text(page, 'fontSize-value', '7%');
   assert.equal(await page.locator('#preset-select option:checked').textContent(), 'UI renamed');
   assert.equal(await page.locator('#offset').inputValue(), '150');

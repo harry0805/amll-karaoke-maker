@@ -1,10 +1,13 @@
 import { customFontName, loadLyricFont, lyricFontCSS, setStageFontCSS } from './font-runtime';
 import { backgroundGradient } from './background-gradient';
-import { DomLyricPlayer, type LyricLine } from '@applemusic-like-lyrics/core';
+import { type LyricLine } from '@applemusic-like-lyrics/core';
+import { KaraokePlayer } from './karaoke-player';
+import { isSinging } from './lyric-window';
+import { LYRIC_FADE_MS } from './lyric-motion';
 import { parseTTML } from '@applemusic-like-lyrics/ttml';
 import { fonts, type SettingsSnapshot } from './settings';
 
-const LINE_FADE_MS = 250;
+const LINE_FADE_MS = LYRIC_FADE_MS;
 
 export function parseLyrics(text: string): LyricLine[] {
   const xml = new DOMParser().parseFromString(text, 'application/xml');
@@ -48,7 +51,7 @@ export function parseLyrics(text: string): LyricLine[] {
 }
 
 export class Lyrics {
-  player = new DomLyricPlayer();
+  player = new KaraokePlayer();
   settings: SettingsSnapshot;
   private previous = -1;
   private fontText = '';
@@ -56,6 +59,7 @@ export class Lyrics {
   private disposed = false;
   private videoTime = 0;
   private lineEnds = new WeakMap<object, number>();
+  private fadePositions = new WeakMap<object, number>();
   private outlineId = `lyric-outline-${crypto.randomUUID()}`;
   private outlineDilate: SVGFEMorphologyElement;
   private outlineFlood: SVGFEFloodElement;
@@ -121,10 +125,11 @@ export class Lyrics {
     this.settings = settings;
     this.updateIntro();
     const container = this.stage.querySelector<HTMLElement>('#lyrics')!;
-    container.style.height = `${settings.height}%`;
+    container.style.height = `${settings.height || 100}%`;
     container.style.bottom = `${settings.bottom}%`;
     container.style.left = `${settings.horizontalMargin}%`;
     container.style.width = `${100 - 2 * settings.horizontalMargin}%`;
+    this.player.configureViewport(this.stage, container, settings);
     this.player.getElement().style.setProperty('--amll-lp-font-size', `${settings.fontSize}cqh`);
     this.player.getElement().style.setProperty('--line-spacing', String(settings.lineSpacing));
     this.player.getElement().style.setProperty('--amll-lp-color', settings.textColor);
@@ -209,14 +214,33 @@ export class Lyrics {
     // AMLL may extend a line to match background vocals or transitions. Hide
     // at its own final sung word, falling back to line timing for empty lines.
     this.lineEnds = new WeakMap();
+    this.fadePositions = new WeakMap();
     let index = 0;
     const sungEnd = (line: LyricLine) => {
       const words = line.words.filter((word) => word.word.trim());
       return words.length ? Math.max(...words.map((word) => word.endTime)) : line.endTime;
     };
+    const interval = (line: LyricLine) => {
+      const words = line.words.filter((word) => word.word.trim());
+      // Line-timed lyrics sometimes use a placeholder word at 0..0.
+      const placeholder =
+        words.length === 1 && words[0]!.startTime === 0 && words[0]!.endTime === 0;
+      return {
+        start:
+          words.length && !placeholder
+            ? Math.min(...words.map((word) => word.startTime))
+            : line.startTime,
+        end: placeholder ? line.endTime : sungEnd(line),
+      };
+    };
+    this.player.intervals = [];
     for (const group of this.player.currentLyricGroups) {
-      this.lineEnds.set(group.mainLine, sungEnd(lines[index++]!));
-      if (group.bgLine) this.lineEnds.set(group.bgLine, sungEnd(lines[index++]!));
+      const source = lines[index++]!;
+      const main = interval(source);
+      const background = group.bgLine ? interval(lines[index++]!) : undefined;
+      this.lineEnds.set(group.mainLine, main.end);
+      if (group.bgLine && background) this.lineEnds.set(group.bgLine, background.end);
+      this.player.intervals.push({ main, background, backgroundOnly: source.isBG });
     }
     await document.fonts.ready;
     // Deferred resize delivery needs time to measure newly built offscreen
@@ -243,8 +267,8 @@ export class Lyrics {
     if (jump) await this.player.calcLayout(true, true);
     this.player.update(Math.min(100, delta));
     const groups = this.player.currentLyricGroups;
-    // The viewport clips upcoming lines spatially; never toggle them by index.
-    // This lets them enter from below rather than pop into an empty space.
+    // KaraokePlayer keeps excluded upcoming lines below the viewport. Only
+    // finished lines fade here, using media time for preview/export parity.
     groups.forEach((group) => {
       for (const line of [group.mainLine, group.bgLine]) {
         if (!line) continue;
@@ -254,6 +278,19 @@ export class Lyrics {
         // offline exports produce the same fade without delaying scrolling.
         const progress = Math.min(1, Math.max(0, (time - end) / LINE_FADE_MS));
         const opacity = 1 - progress * progress * (3 - 2 * progress);
+        element.style.translate = '';
+        element.style.scale = '';
+        element.style.transformOrigin = '';
+        const top = element.getBoundingClientRect().top;
+        if (progress === 0 || jump || !this.fadePositions.has(line))
+          this.fadePositions.set(line, top);
+        if (progress > 0 && progress < 1) {
+          // Freeze the outgoing vocal in screen space even when its group still
+          // has a singing background and the remaining rows are moving.
+          element.style.translate = `0 ${this.fadePositions.get(line)! - top}px`;
+          element.style.transformOrigin = `top ${line.getLine().isDuet ? 'right' : 'left'}`;
+          element.style.scale = String(1 - (1 - opacity) * 0.04);
+        }
         const baseFilter = element.style.filter.replace(/\s*opacity\([^)]*\)/g, '');
         element.style.filter = `${baseFilter} opacity(${opacity})`;
         element.style.visibility = progress < 1 ? 'visible' : 'hidden';
@@ -261,9 +298,23 @@ export class Lyrics {
     });
     // AMLL uses Web Animations for word fills. Freeze them at the media time,
     // including during offline export, while its springs advance by frame delta.
-    for (const group of this.player.currentLyricGroups) {
-      if (time >= group.startTime && time < group.endTime) group.enable(time, false);
-    }
+    this.player.currentLyricGroups.forEach((group, index) => {
+      const interval = this.player.intervals[index];
+      if (
+        (time >= group.startTime && time < group.endTime) ||
+        isSinging(interval?.main, time) ||
+        isSinging(interval?.background, time)
+      )
+        group.enable(time, false);
+      // AMLL derives mask contrast from scale. Backgrounds start at 75%, and
+      // have no contrast until they reach 97%, hiding early sung words. Keep
+      // their fill readable while the original entrance/scale animation runs.
+      if (group.bgLine && isSinging(interval?.background, time)) {
+        const element = group.bgLine.getElement();
+        element.style.setProperty('--bright-mask-alpha', '1');
+        element.style.setProperty('--dark-mask-alpha', '0.4');
+      }
+    });
     for (const animation of this.player.getElement().getAnimations({ subtree: true }))
       animation.pause();
     this.previous = time;

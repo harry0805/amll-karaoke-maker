@@ -8,7 +8,7 @@
   let { studio }: { studio: StudioState } = $props();
   const outline = (value: number) => (value ? `${value}%` : 'Off');
   const placement = [
-    { key: 'height', label: 'Lyric area', min: 1, max: 100 },
+    { key: 'height', label: 'Lyric area', min: 0, max: 100 },
     {
       key: 'lineSpacing',
       label: 'Line spacing',
@@ -221,10 +221,28 @@
   >
     <Icon name="move" />Lyric placement
   </h2>
+  <RangeControl
+    id="visibleLines"
+    label="Visible lines"
+    min={0}
+    max={20}
+    value={studio.presetSettings.visibleLines}
+    format={(value) => (value === 0 ? 'Unlimited' : String(value))}
+    disabled={studio.session.exporting}
+    onchange={(value) => studio.updatePresetSetting('visibleLines', value)}
+  />
+  <p class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted">
+    Active lines can exceed this limit. A primary line and its background vocals count together.
+  </p>
+  <p class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted">
+    Lyric area is unrestricted at zero. A smaller area clips lower lines while keeping the first
+    line visible.
+  </p>
   {#each placement as control}
     <RangeControl
       id={control.key}
       {...control}
+      format={(value) => (control.key === 'height' && value === 0 ? 'Unrestricted' : `${value}%`)}
       value={studio.presetSettings[control.key]}
       disabled={studio.session.exporting}
       onchange={(value) => studio.updatePresetSetting(control.key, value)}

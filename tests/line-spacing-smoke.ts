@@ -5,7 +5,13 @@ const browser = await chromium.launch();
 try {
   const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
   const ttml = `<tt xmlns="http://www.w3.org/ns/ttml"><body><div>${Array.from({ length: 16 }, (_, i) => `<p begin="${i * 2}s" end="${i * 2 + 2}s"><span begin="${i * 2}s" end="${i * 2 + 2}s">Line ${i + 1}</span></p>`).join('')}</div></body></tt>`;
-  let settings = { ...defaults, fontSize: 3, height: 50, lineSpacing: 0.75 };
+  let settings = {
+    ...defaults,
+    visibleLines: 0,
+    fontSize: 3,
+    height: 50,
+    lineSpacing: 0.75,
+  };
   await page.route('**/test-config/spacing-test/config', (route) =>
     route.fulfill({ json: { ttml, settings } }),
   );
@@ -54,7 +60,7 @@ try {
     entered && entered.y < upcoming.y && entered.y < entered.boxHeight,
     'An offscreen line should slide into the area',
   );
-  settings = { ...settings, lineSpacing: 2 };
+  settings = { ...settings, lineSpacing: 1.5 };
   await load();
   const spacious = await rows();
   assert(

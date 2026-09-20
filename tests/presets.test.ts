@@ -50,6 +50,17 @@ test('invalid imports are rejected as a whole', () => {
     expect(() => parsePresets(JSON.stringify(data))).toThrow();
   expect(() => parsePresets('x'.repeat(1024 * 1024 + 1))).toThrow();
 });
+
+test('older presets gain line-window defaults without losing their appearance', () => {
+  const legacy = JSON.parse(
+    serializePresets([{ name: 'Older preset', settings: { ...defaults, fontSize: 7 } }]),
+  );
+  delete legacy.presets[0].settings.visibleLines;
+  legacy.presets[0].settings.height = 25;
+  legacy.presets[0].settings.flexibleLyricArea = true;
+  const [preset] = parsePresets(JSON.stringify(legacy));
+  expect(preset!.settings).toEqual(pickPresetSettings({ ...defaults, fontSize: 7, height: 25 }));
+});
 test('imports preserve existing names and settings when names collide', () => {
   const existing = parsePresets(serializePresets([{ name: 'Duet', settings: defaults }]));
   const incoming = parsePresets(

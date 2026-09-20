@@ -106,3 +106,12 @@ body.render #video {
 .amll-lyric-player [class*='_lyricDuetLine'] {
   --lyric-outline-filter: var(--duet-outline-filter, none);
 }
+
+/* Reserve background space before activation. AMLL's collapsing top wrapper
+   otherwise shifts the primary while our group is already moving. */
+.amll-lyric-player [class*='_bgWrapper'] {
+  position: relative !important;
+  top: auto !important;
+  margin-top: 0 !important;
+  transform: none !important;
+}

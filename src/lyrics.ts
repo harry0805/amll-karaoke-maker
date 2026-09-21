@@ -242,7 +242,12 @@ export class Lyrics {
       ])
       .join(' ');
     await this.refreshFont();
-    this.player.setLyricLines(lines, 0);
+    // Initialize AMLL at the same effective timeline position as the first
+    // rendered frame. Passing zero here and applying a negative offset on the
+    // next call makes AMLL enter an already-playing first line after layout,
+    // which briefly disturbs its scale animation.
+    const initialTime = Math.max(0, -this.settings.offset);
+    this.player.setLyricLines(lines, initialTime);
     // AMLL may extend a line to match background vocals or transitions. Hide
     // at its own final sung word, falling back to line timing for empty lines.
     this.lineEnds = new WeakMap();

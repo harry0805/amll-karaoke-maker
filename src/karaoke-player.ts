@@ -244,7 +244,11 @@ export class KaraokePlayer extends DomLyricPlayer {
       // Finished groups retain their last screen position while their individual
       // vocals fade. They no longer take a slot or delay incoming rows.
       if (fading.has(i)) clipHeight = Math.max(clipHeight, available - motion.position + inset);
-      group.setTransform(motion.position, false, 0, active.has(i) || fading.has(i), 1, 0);
+      // Keep AMLL's line-scale spring in sync with forced seeks and the first
+      // frame. Otherwise an initially upcoming first line keeps easing from
+      // 100% to 97% while its row has already snapped into place, then grows
+      // again as it becomes active.
+      group.setTransform(motion.position, force, 0, active.has(i) || fading.has(i), 1, 0);
       group.posY.setPosition(motion.position);
       group.update(0);
     });

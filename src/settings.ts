@@ -19,6 +19,7 @@ export interface PresetSettings {
   horizontalMargin: number;
   height: number;
   visibleLines: number;
+  keepScrollNearEnd: boolean;
   shade: number;
   backgroundColor: string;
   textColor: string;
@@ -41,8 +42,9 @@ export const presetDefaults: PresetSettings = {
   lineSpacing: 1,
   bottom: 0,
   horizontalMargin: 5,
-  height: 0,
+  height: 100,
   visibleLines: 2,
+  keepScrollNearEnd: false,
   shade: 70,
   backgroundColor: '#000000',
   textColor: '#ffffff',
@@ -56,13 +58,17 @@ export const defaults: SettingsSnapshot = { ...presetDefaults, ...preferenceDefa
 export function validateSettings(input: unknown): SettingsSnapshot {
   if (!input || typeof input !== 'object') throw new Error('Invalid export settings.');
   // These fields were added to the v1 format. Preserve older settings/presets.
-  const s = { visibleLines: 2, ...input } as SettingsSnapshot;
+  const s = { visibleLines: 2, keepScrollNearEnd: false, ...input } as SettingsSnapshot;
+  // Preserve the old unlimited height and clamp older 11..20 line presets.
+  if (s.height === 0) s.height = 100;
+  if (Number.isInteger(s.visibleLines) && s.visibleLines > 10 && s.visibleLines <= 20)
+    s.visibleLines = 10;
   for (const [key, min, max] of [
     ['fontSize', 1, 15],
     ['lineSpacing', 0.75, 1.5],
     ['bottom', 0, 80],
     ['horizontalMargin', 0, 40],
-    ['height', 0, 100],
+    ['height', 1, 100],
     ['shadeHeight', 0, 100],
     ['duetOutlineWidth', 0, 12],
     ['offset', -600000, 600000],
@@ -74,8 +80,9 @@ export function validateSettings(input: unknown): SettingsSnapshot {
       throw new Error(`Invalid ${key}.`);
   }
   if (typeof s.useDuetColors !== 'boolean') throw new Error('Invalid useDuetColors.');
-  if (!Number.isInteger(s.visibleLines) || s.visibleLines < 0 || s.visibleLines > 20)
-    throw new Error('Visible lines must be a whole number between 0 and 20.');
+  if (!Number.isInteger(s.visibleLines) || s.visibleLines < 0 || s.visibleLines > 10)
+    throw new Error('Visible lines must be 1 to 10, or 0 for unlimited.');
+  if (typeof s.keepScrollNearEnd !== 'boolean') throw new Error('Invalid keepScrollNearEnd.');
   if (typeof s.showLyricsBeforeStart !== 'boolean')
     throw new Error('Invalid showLyricsBeforeStart.');
   if (typeof s.font !== 'string' || !Object.hasOwn(fonts, s.font))
@@ -103,6 +110,7 @@ export function validateSettings(input: unknown): SettingsSnapshot {
     horizontalMargin: s.horizontalMargin,
     height: s.height,
     visibleLines: s.visibleLines,
+    keepScrollNearEnd: s.keepScrollNearEnd,
     offset: s.offset,
     shade: s.shade,
     textColor: s.textColor,

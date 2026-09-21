@@ -92,6 +92,12 @@ export class StudioState {
   private compatibility: Promise<void> = Promise.resolve();
   private controller?: AbortController;
   private disposed = false;
+  private pendingSettings?: SettingsSnapshot;
+  private pendingFontChange = false;
+  private frameBusy = false;
+  private seekRequested = true;
+  private lastFrameTime = -1;
+  private settleFrames = 0;
 
   attach(
     stage: HTMLElement,
@@ -144,10 +150,9 @@ export class StudioState {
       const fontChanged = settings.font !== this.settingsSnapshot.font;
       this.presetSettings = pickPresetSettings(settings);
       this.preferences = pickPreferences(settings);
-      this.lyrics?.configure(settings);
-      if (fontChanged) void this.refreshFont();
+      this.pendingSettings = settings;
+      this.pendingFontChange ||= fontChanged;
       this.session.errors[source] = '';
-      void this.frame(0, true);
     } catch (error) {
       this.session.errors[source] = String(error);
     }
@@ -255,12 +260,49 @@ export class StudioState {
   }
 
   async frame(delta: number, seek = false) {
-    if (!this.disposed && !this.session.exporting && this.video)
-      await this.lyrics?.frame(this.video.currentTime * 1000, delta, seek);
+    this.seekRequested ||= seek;
+    if (this.disposed || this.session.exporting || !this.video || this.frameBusy) return;
+    this.frameBusy = true;
+    try {
+      let changed = false;
+      if (this.pendingSettings) {
+        const settings = this.pendingSettings;
+        this.pendingSettings = undefined;
+        this.seekRequested ||= settings.offset !== this.lyrics?.settings.offset;
+        this.lyrics?.configure(settings);
+        changed = true;
+        if (this.pendingFontChange) {
+          this.pendingFontChange = false;
+          void this.refreshFont();
+        }
+      }
+      const time = this.video.currentTime * 1000;
+      if (
+        !changed &&
+        !this.seekRequested &&
+        this.settleFrames === 0 &&
+        delta === 0 &&
+        time === this.lastFrameTime
+      )
+        return;
+      const force = this.seekRequested;
+      this.seekRequested = false;
+      if (changed || force) this.settleFrames = 2;
+      else this.settleFrames = Math.max(0, this.settleFrames - 1);
+      await this.lyrics?.frame(time, delta, force);
+      this.lastFrameTime = time;
+    } finally {
+      this.frameBusy = false;
+    }
+  }
+
+  requestSeekFrame() {
+    this.seekRequested = true;
   }
 
   async resizeLyrics() {
     await this.lyrics?.player.calcLayout(true, true);
+    this.requestSeekFrame();
   }
 
   async render() {

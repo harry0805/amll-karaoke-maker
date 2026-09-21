@@ -3,11 +3,14 @@ import { backgroundGradient } from './background-gradient';
 import { type LyricLine } from '@applemusic-like-lyrics/core';
 import { KaraokePlayer } from './karaoke-player';
 import { isSinging } from './lyric-window';
-import { LYRIC_FADE_MS } from './lyric-motion';
+import { LYRIC_FADE_MS, lyricFadeOpacity } from './lyric-motion';
 import { parseTTML } from '@applemusic-like-lyrics/ttml';
 import { fonts, type SettingsSnapshot } from './settings';
 
 const LINE_FADE_MS = LYRIC_FADE_MS;
+// The lead-in eases the whole stage in and is unrelated to how fast a finished
+// vocal leaves, so tuning the exit fade must not shorten it.
+const INTRO_FADE_MS = 250;
 
 export function parseLyrics(text: string): LyricLine[] {
   const xml = new DOMParser().parseFromString(text, 'application/xml');
@@ -121,11 +124,39 @@ export class Lyrics {
     this.player.dispose();
     this.outlineSVG.remove();
   }
+  private configured = false;
   configure(settings: SettingsSnapshot) {
+    const previous = this.settings;
+    const layoutChanged =
+      !this.configured ||
+      (
+        [
+          'font',
+          'fontSize',
+          'lineSpacing',
+          'height',
+          'bottom',
+          'horizontalMargin',
+          'visibleLines',
+          'keepScrollNearEnd',
+        ] as const
+      ).some((key) => settings[key] !== previous[key]);
+    const outlineChanged =
+      !this.configured ||
+      (
+        [
+          'fontSize',
+          'outlineWidth',
+          'outlineColor',
+          'duetOutlineWidth',
+          'duetOutlineColor',
+          'useDuetColors',
+        ] as const
+      ).some((key) => settings[key] !== previous[key]);
     this.settings = settings;
     this.updateIntro();
     const container = this.stage.querySelector<HTMLElement>('#lyrics')!;
-    container.style.height = `${settings.height || 100}%`;
+    if (!this.configured) container.style.height = `${settings.height || 100}%`;
     container.style.bottom = `${settings.bottom}%`;
     container.style.left = `${settings.horizontalMargin}%`;
     container.style.width = `${100 - 2 * settings.horizontalMargin}%`;
@@ -140,10 +171,11 @@ export class Lyrics {
         settings.useDuetColors ? settings.duetColor : settings.textColor,
       );
     container.style.fontFamily = fonts[settings.font];
-    this.updateOutline();
+    if (outlineChanged) this.updateOutline();
     this.stage.style.setProperty('--shade-background', backgroundGradient(settings));
     this.stage.style.setProperty('--shade-height', `${settings.shadeHeight}%`);
-    void this.player.calcLayout(true, true);
+    if (layoutChanged) void this.player.calcLayout(true, true);
+    this.configured = true;
   }
   private updateIntro() {
     // Gate only the offset lead-in, not the gap before the first sung line.
@@ -152,7 +184,7 @@ export class Lyrics {
     const progress =
       this.settings.showLyricsBeforeStart || this.settings.offset <= 0
         ? 1
-        : Math.min(1, Math.max(0, time / LINE_FADE_MS));
+        : Math.min(1, Math.max(0, time / INTRO_FADE_MS));
     this.container.style.opacity = String(progress * progress * (3 - 2 * progress));
   }
   private updateOutline() {
@@ -277,7 +309,7 @@ export class Lyrics {
         // Use media time, not a CSS transition or wall clock, so seeking and
         // offline exports produce the same fade without delaying scrolling.
         const progress = Math.min(1, Math.max(0, (time - end) / LINE_FADE_MS));
-        const opacity = 1 - progress * progress * (3 - 2 * progress);
+        const opacity = lyricFadeOpacity(progress);
         element.style.translate = '';
         element.style.scale = '';
         element.style.transformOrigin = '';

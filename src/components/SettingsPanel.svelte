@@ -4,21 +4,41 @@
   import { fontLicenseURL } from '../font-runtime';
   import type { PresetSettings } from '../settings';
   import Icon from './Icon.svelte';
+  import InfoPopover from './InfoPopover.svelte';
   import RangeControl from './RangeControl.svelte';
   let { studio }: { studio: StudioState } = $props();
   const outline = (value: number) => (value ? `${value}%` : 'Off');
   const placement = [
-    { key: 'height', label: 'Lyric area', min: 0, max: 100 },
+    {
+      key: 'height',
+      label: 'Height Limit',
+      info: 'Maximum visible lyric height. 100% is unlimited; smaller values can clip part of a line.',
+      min: 1,
+      max: 100,
+    },
     {
       key: 'lineSpacing',
       label: 'Line spacing',
+      info: 'Adjust the space between lyric rows.',
       min: 0.75,
       max: 1.5,
       step: 0.05,
       format: (n: number) => `${n.toFixed(2)}×`,
     },
-    { key: 'bottom', label: 'Bottom margin', min: 0, max: 80 },
-    { key: 'horizontalMargin', label: 'Horizontal margin', min: 0, max: 40 },
+    {
+      key: 'bottom',
+      label: 'Bottom margin',
+      info: 'Distance between the lyrics and the bottom of the video.',
+      min: 0,
+      max: 80,
+    },
+    {
+      key: 'horizontalMargin',
+      label: 'Horizontal margin',
+      info: 'Space reserved on each side of the lyrics.',
+      min: 0,
+      max: 40,
+    },
   ] as const;
   const background = [
     { key: 'shade', label: 'Background opacity', id: 'shade-control' },
@@ -38,6 +58,7 @@
   <RangeControl
     id="fontSize"
     label="Text size"
+    info="Text size as a percentage of the video height."
     value={studio.presetSettings.fontSize}
     min={1}
     max={15}
@@ -224,25 +245,42 @@
   <RangeControl
     id="visibleLines"
     label="Visible lines"
-    min={0}
-    max={20}
-    value={studio.presetSettings.visibleLines}
-    format={(value) => (value === 0 ? 'Unlimited' : String(value))}
+    info="The target amount of lines that will appear at the same time, active lines (lines currently being sung) is always shown regardless of this limit."
+    min={1}
+    max={11}
+    value={studio.presetSettings.visibleLines || 11}
+    format={(value) => (value === 11 ? 'Unlimited' : String(value))}
     disabled={studio.session.exporting}
-    onchange={(value) => studio.updatePresetSetting('visibleLines', value)}
+    onchange={(value) => studio.updatePresetSetting('visibleLines', value === 11 ? 0 : value)}
   />
-  <p class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted">
-    Active lines can exceed this limit. A primary line and its background vocals count together.
-  </p>
-  <p class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted">
-    Lyric area is unrestricted at zero. A smaller area clips lower lines while keeping the first
-    line visible.
-  </p>
+  <div class="mt-4 flex items-center gap-1 text-[14px]">
+    <label class="flex items-center gap-2">
+      <input
+        id="keepScrollNearEnd"
+        type="checkbox"
+        class="m-0 accent-accent outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
+        checked={studio.presetSettings.keepScrollNearEnd}
+        disabled={studio.session.exporting}
+        onchange={(event) =>
+          studio.updatePresetSetting('keepScrollNearEnd', event.currentTarget.checked)}
+      />
+      Keep scroll near end
+    </label><InfoPopover
+      label="Keep scroll near end"
+      text="This keeps the top most line always aligned at the same height at the end."
+    />
+  </div>
+
   {#each placement as control}
     <RangeControl
       id={control.key}
       {...control}
-      format={(value) => (control.key === 'height' && value === 0 ? 'Unrestricted' : `${value}%`)}
+      format={(value) =>
+        control.key === 'height' && value === 100
+          ? 'Unlimited'
+          : control.key === 'lineSpacing'
+            ? control.format(value)
+            : `${value}%`}
       value={studio.presetSettings[control.key]}
       disabled={studio.session.exporting}
       onchange={(value) => studio.updatePresetSetting(control.key, value)}

@@ -24,4 +24,9 @@ export class LyricMotion {
   }
 }
 
-export const LYRIC_FADE_MS = 250;
+export const LYRIC_FADE_MS = 200;
+
+/** Ease out rather than smoothstep. A slow start reads as overlapping text. */
+export function lyricFadeOpacity(progress: number): number {
+  return (1 - Math.min(1, Math.max(0, progress))) ** 2;
+}

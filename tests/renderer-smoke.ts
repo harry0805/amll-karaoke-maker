@@ -2,6 +2,7 @@
 import { chromium } from 'playwright';
 import { strict as assert } from 'node:assert';
 import { defaults, fonts } from '../src/settings';
+import { LYRIC_FADE_MS, lyricFadeOpacity } from '../src/lyric-motion';
 const origin = process.argv[2] || 'http://127.0.0.1:3000';
 const browser = await chromium.launch({ headless: true });
 try {
@@ -70,11 +71,14 @@ try {
   const atEnd = await visibleAt(2300);
   assert(atEnd.includes('Golden words'), 'Fade should begin without an instant cut');
   assert(atEnd.includes('Echo'), 'Background vocal must retain its own timing');
-  await visibleAt(2425);
+  await visibleAt(2300 + LYRIC_FADE_MS / 2);
   const halfway = await page.evaluate(
     () => document.querySelector('[class*="_lyricMainLine"]')!.parentElement!.style.filter,
   );
-  assert(halfway.includes('opacity(0.5)'), 'Line should be halfway faded after 125 ms');
+  assert(
+    halfway.includes(`opacity(${lyricFadeOpacity(0.5)})`),
+    `Half a fade in, the line should sit at ${lyricFadeOpacity(0.5)}, not ${halfway}`,
+  );
   assert(
     !(await visibleAt(2550)).includes('Golden words'),
     'Main fade should finish independently of background vocals',

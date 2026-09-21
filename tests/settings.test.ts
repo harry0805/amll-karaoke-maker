@@ -27,7 +27,7 @@ test('accepts an outline-free style and requires complete settings', () => {
       .outlineWidth,
   ).toBe(0);
   for (const key of Object.keys(defaults)) {
-    if (key === 'visibleLines') continue;
+    if (key === 'visibleLines' || key === 'keepScrollNearEnd') continue;
     const incomplete = { ...defaults } as Partial<typeof defaults>;
     delete incomplete[key as keyof typeof defaults];
     expect(() => validateSettings(incomplete)).toThrow();
@@ -39,9 +39,14 @@ test('accepts an outline-free style and requires complete settings', () => {
 test('line limits validate and older v1 settings receive the new defaults', () => {
   const legacy: Partial<typeof defaults> = { ...defaults };
   delete legacy.visibleLines;
+  delete legacy.keepScrollNearEnd;
+  legacy.height = 0;
   expect(validateSettings(legacy)).toEqual(defaults);
   expect(validateSettings({ ...defaults, visibleLines: 0 }).visibleLines).toBe(0);
   expect(validateSettings({ ...defaults, flexibleLyricArea: false })).toEqual(defaults);
+  expect(validateSettings({ ...defaults, visibleLines: 20 }).visibleLines).toBe(10);
+  expect(validateSettings({ ...defaults, height: 1 }).height).toBe(1);
+  expect(() => validateSettings({ ...defaults, keepScrollNearEnd: null })).toThrow();
   for (const value of [-1, 21, 1.5, NaN, null, '2', undefined])
     expect(() => validateSettings({ ...defaults, visibleLines: value })).toThrow();
 });
@@ -52,7 +57,7 @@ test('new appearance ranges validate boundaries and duet settings', () => {
     ['lineSpacing', 0.75, 1.5],
     ['bottom', 0, 80],
     ['horizontalMargin', 0, 40],
-    ['height', 0, 100],
+    ['height', 1, 100],
     ['shadeHeight', 0, 100],
     ['shade', 0, 100],
     ['shadeFadeStart', 0, 100],
@@ -61,7 +66,7 @@ test('new appearance ranges validate boundaries and duet settings', () => {
     expect(validateSettings({ ...defaults, [key]: min })[key]).toBe(min);
     expect(validateSettings({ ...defaults, [key]: max })[key]).toBe(max);
     expect(() => validateSettings({ ...defaults, [key]: max + 1 })).toThrow();
-    expect(() => validateSettings({ ...defaults, [key]: min - 1 })).toThrow();
+    if (key !== 'height') expect(() => validateSettings({ ...defaults, [key]: min - 1 })).toThrow();
   }
   expect(() => validateSettings({ ...defaults, useDuetColors: 'yes' })).toThrow();
   expect(() => validateSettings({ ...defaults, duetOutlineColor: 'bad' })).toThrow();

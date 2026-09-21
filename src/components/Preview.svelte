@@ -13,6 +13,7 @@
   let duration = $state(0);
   let width = $state(0);
   let height = $state(0);
+  let pendingSeek: number | undefined;
   const formatTime = (n: number) =>
     `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, '0')}`;
   const displayedTime = $derived(
@@ -25,29 +26,43 @@
 
   onMount(() => {
     studio.attach(stage, container, video, canvas);
+    const resizeObserver = new ResizeObserver(() => studio.requestSeekFrame());
+    resizeObserver.observe(stage);
     let stopped = false;
     let frame = 0;
     let previous = performance.now();
     async function tick(now: number) {
       try {
-        await studio.frame(video.paused ? 0 : now - previous);
+        if (pendingSeek !== undefined && !disabled && !video.seeking) {
+          video.currentTime = pendingSeek;
+          pendingSeek = undefined;
+        }
+        if (!video.seeking) await studio.frame(video.paused ? 0 : now - previous);
       } catch (error) {
         studio.session.errors.source = String(error);
       }
       previous = now;
       if (stopped) return;
-      if (studio.session.loaded && !studio.session.exporting) position = video.currentTime;
+      if (
+        studio.session.loaded &&
+        !studio.session.exporting &&
+        pendingSeek === undefined &&
+        !video.seeking
+      )
+        position = video.currentTime;
       frame = requestAnimationFrame(tick);
     }
     frame = requestAnimationFrame(tick);
     return () => {
       stopped = true;
       cancelAnimationFrame(frame);
+      resizeObserver.disconnect();
       studio.dispose();
     };
   });
 
   function metadata() {
+    pendingSeek = undefined;
     if (!Number.isFinite(video.duration) || !video.videoWidth) {
       studio.session.videoError = true;
       studio.session.errors.source = 'Cannot determine the video duration. Try an MP4 video.';
@@ -71,8 +86,8 @@
   }
   function seek(time: number) {
     if (disabled || !Number.isFinite(video.duration)) return;
-    video.currentTime = Math.max(0, Math.min(video.duration, time));
-    position = video.currentTime;
+    pendingSeek = Math.max(0, Math.min(video.duration, time));
+    position = pendingSeek;
   }
   function keyboard(event: KeyboardEvent) {
     if (
@@ -96,7 +111,7 @@
       if (!event.repeat) void togglePlayback();
     } else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
       event.preventDefault();
-      seek(video.currentTime + (event.key === 'ArrowLeft' ? -5 : 5));
+      seek((pendingSeek ?? video.currentTime) + (event.key === 'ArrowLeft' ? -5 : 5));
     }
   }
 </script>
@@ -128,7 +143,7 @@
           onplay={() => (paused = false)}
           onpause={() => (paused = true)}
           onended={() => (paused = true)}
-          onseeked={() => void studio.frame(0, true)}
+          onseeked={() => studio.requestSeekFrame()}
           onerror={() => {
             studio.session.loaded = false;
             studio.session.videoError = true;
@@ -190,7 +205,7 @@
         {disabled}
         aria-label="Rewind 10 seconds"
         title="Rewind 10 seconds"
-        onclick={() => seek(video.currentTime - 10)}
+        onclick={() => seek((pendingSeek ?? video.currentTime) - 10)}
         ><Icon name="rotate-ccw" /><span
           class="pointer-events-none absolute inset-0 m-0 grid place-items-center pt-0.5 font-[Arial,sans-serif] text-[8px] text-inherit"
           aria-hidden="true">10</span
@@ -218,7 +233,7 @@
         {disabled}
         aria-label="Forward 10 seconds"
         title="Forward 10 seconds"
-        onclick={() => seek(video.currentTime + 10)}
+        onclick={() => seek((pendingSeek ?? video.currentTime) + 10)}
         ><Icon name="rotate-cw" /><span
           class="pointer-events-none absolute inset-0 m-0 grid place-items-center pt-0.5 font-[Arial,sans-serif] text-[8px] text-inherit"
           aria-hidden="true">10</span

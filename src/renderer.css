@@ -107,11 +107,28 @@ body.render #video {
   --lyric-outline-filter: var(--duet-outline-filter, none);
 }
 
-/* Reserve background space before activation. AMLL's collapsing top wrapper
-   otherwise shifts the primary while our group is already moving. */
+/* AMLL slides and collapses this wrapper on its own clock. Measuring it mid
+   animation moved every later line each frame, so pin its box and let
+   KaraokePlayer decide when the background joins the flow. */
 .amll-lyric-player [class*='_bgWrapper'] {
-  position: relative !important;
-  top: auto !important;
   margin-top: 0 !important;
   transform: none !important;
+}
+
+.amll-lyric-player .karaoke-bg-space [class*='_bgWrapper'] {
+  position: relative !important;
+  top: auto !important;
+}
+
+/* Without a reservation the wrapper leaves the flow, even while AMLL still
+   considers the group active with its background already faded out. */
+.amll-lyric-player [class*='_lyricLineWrapper']:not(.karaoke-bg-space) [class*='_bgWrapper'] {
+  position: absolute !important;
+  top: 100% !important;
+}
+
+/* Keep the node for seeking and word masks, but release its row after the fade. */
+.amll-lyric-player .karaoke-primary-ended {
+  position: absolute !important;
+  width: 100%;
 }

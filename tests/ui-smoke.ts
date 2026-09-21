@@ -58,7 +58,10 @@ try {
     '-shortest',
     source,
   ]);
-  const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  const context = await browser.newContext({
+    viewport: { width: 1400, height: 900 },
+    userAgent: `Mozilla/5.0 Chrome/${browser.version()}`,
+  });
   // Headless Chromium's user agent can trigger the app's browser warning.
   context.on('page', async (page) => {
     await page.addLocatorHandler(page.locator('#browser-support-warning[open]'), async () => {
@@ -75,12 +78,25 @@ try {
   await page.locator('#offset').fill('150');
   await page.getByLabel('Show lyrics before start', { exact: true }).check();
   await step(page, 'Settings');
+  await page.getByRole('button', { name: 'About Visible lines', exact: true }).hover();
+  const lineInfo = page.getByRole('dialog', { name: 'About Visible lines', exact: true });
+  await lineInfo.waitFor({ state: 'visible' });
+  assert((await lineInfo.textContent())?.includes('active lines (lines currently being sung)'));
+  await page.keyboard.press('Escape');
+  await lineInfo.waitFor({ state: 'hidden' });
+  await page.mouse.move(0, 0);
+  await page.getByRole('button', { name: 'About Visible lines', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await lineInfo.waitFor({ state: 'visible' });
+  await page.keyboard.press('Escape');
+  await lineInfo.waitFor({ state: 'hidden' });
   assert.equal(await page.locator('#visibleLines').inputValue(), '2');
-  assert.equal(await page.locator('#height').inputValue(), '0');
-  await page.locator('#visibleLines').fill('0');
+  assert.equal(await page.locator('#height').inputValue(), '100');
+  await page.locator('#visibleLines').fill('11');
   await text(page, 'visibleLines-value', 'Unlimited');
   await page.locator('#visibleLines').fill('4');
   await page.locator('#height').fill('20');
+  await page.locator('#keepScrollNearEnd').check();
   await page.getByRole('slider', { name: 'Text size', exact: true }).fill('7');
   await text(page, 'fontSize-value', '7%');
   assert.equal(
@@ -110,6 +126,7 @@ try {
   assert.equal(portable.presets[0].settings.fontSize, 7);
   assert.equal(portable.presets[0].settings.visibleLines, 4);
   assert.equal(portable.presets[0].settings.height, 20);
+  assert.equal(portable.presets[0].settings.keepScrollNearEnd, true);
   assert.equal(portable.presets[0].settings.offset, undefined);
   await page.locator('#preset-close').click();
   await page.locator('#fontSize').fill('8');
@@ -125,7 +142,7 @@ try {
   await page.locator('#preset-switch-confirm').click();
   await text(page, 'fontSize-value', '5%');
   assert.equal(await page.locator('#visibleLines').inputValue(), '2');
-  assert.equal(await page.locator('#height').inputValue(), '0');
+  assert.equal(await page.locator('#height').inputValue(), '100');
   assert.equal(await page.locator('#offset').inputValue(), '150');
   assert.equal(await page.locator('#showLyricsBeforeStart').isChecked(), true);
   await page.locator('#preset-select').selectOption({ label: 'UI renamed' });
@@ -137,6 +154,7 @@ try {
   await step(page, 'Settings');
   assert.equal(await page.locator('#visibleLines').inputValue(), '4');
   assert.equal(await page.locator('#height').inputValue(), '20');
+  assert.equal(await page.locator('#keepScrollNearEnd').isChecked(), true);
   await text(page, 'fontSize-value', '7%');
   assert.equal(await page.locator('#preset-select option:checked').textContent(), 'UI renamed');
   assert.equal(await page.locator('#offset').inputValue(), '150');
@@ -213,6 +231,69 @@ try {
   await page.waitForFunction(
     () => Math.abs((document.querySelector('#video') as HTMLVideoElement).currentTime - 0.5) < 0.01,
   );
+  await step(page, 'Settings');
+  const batching = await page.evaluate(async () => {
+    const path = '/src/lyrics.ts';
+    const { Lyrics } = await import(path);
+    const original = Lyrics.prototype.configure;
+    let calls = 0;
+    Lyrics.prototype.configure = function (this: object, ...args: unknown[]) {
+      calls++;
+      return original.apply(this, args);
+    };
+    const slider = document.getElementById('fontSize') as HTMLInputElement;
+    for (let i = 0; i < 100; i++) {
+      slider.value = String(3 + (i % 10) / 10);
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    for (let i = 0; i < 4; i++)
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    Lyrics.prototype.configure = original;
+    return {
+      calls,
+      value: slider.value,
+      applied: document
+        .querySelector<HTMLElement>('.amll-lyric-player')!
+        .style.getPropertyValue('--amll-lp-font-size'),
+    };
+  });
+  assert.equal(batching.calls, 1, JSON.stringify(batching));
+  assert.equal(batching.applied, batching.value + 'cqh');
+  const scrubbing = await page.evaluate(async () => {
+    const video = document.getElementById('video') as HTMLVideoElement;
+    const property = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'currentTime')!;
+    let seeks = 0;
+    Object.defineProperty(video, 'currentTime', {
+      configurable: true,
+      get: () => property.get!.call(video),
+      set: (value: number) => {
+        seeks++;
+        property.set!.call(video, value);
+      },
+    });
+    const slider = document.getElementById('seek') as HTMLInputElement;
+    for (let i = 0; i < 100; i++) {
+      slider.value = String(i / 100);
+      slider.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    for (let i = 0; i < 30; i++) {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      if (!video.seeking && Math.abs(video.currentTime - 0.99) < 0.01) break;
+    }
+    const time = video.currentTime;
+    Reflect.deleteProperty(video, 'currentTime');
+    return { seeks, time };
+  });
+  assert.equal(scrubbing.seeks, 1, JSON.stringify(scrubbing));
+  assert(Math.abs(scrubbing.time - 0.99) < 0.01, JSON.stringify(scrubbing));
+  await page.locator('#seek').fill('0.5');
+  await page.waitForFunction(
+    () => Math.abs((document.getElementById('video') as HTMLVideoElement).currentTime - 0.5) < 0.01,
+  );
+  console.log(
+    'PASS: 100 settings inputs produce one configure; 100 scrub inputs produce one seek, both retain the latest value',
+  );
+  await step(page, 'Source');
   await page.locator('#offset').fill('');
   await step(page, 'Render');
   assert.equal(await page.locator('#export').isEnabled(), false);
@@ -281,6 +362,31 @@ try {
   await page.locator('#tab-settings').click();
   await page.locator('#proceed-anyway').click();
   await page.locator('#step-settings').waitFor({ state: 'visible' });
+  const touchContext = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+    userAgent: `Mozilla/5.0 Chrome/${browser.version()}`,
+  });
+  const touch = await touchContext.newPage();
+  await touch.goto(origin);
+  await text(touch, 'font-status', '');
+  await step(touch, 'Settings');
+  const hint = touch.getByRole('button', { name: 'About Keep scroll near end', exact: true });
+  await hint.tap();
+  const popup = touch.getByRole('dialog', { name: 'About Keep scroll near end', exact: true });
+  await popup.waitFor({ state: 'visible' });
+  assert(
+    (await popup.textContent())?.includes(
+      'This keeps the top most line always aligned at the same height at the end.',
+    ),
+  );
+  const bounds = await popup.boundingBox();
+  assert(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 390);
+  assert.equal(await touch.locator('#keepScrollNearEnd').isChecked(), false);
+  await hint.tap();
+  await popup.waitFor({ state: 'hidden' });
+  await touchContext.close();
   assert.deepEqual(errors, []);
   console.log(
     'PASS: UI settings, presets, rename/import/download, confirmations, restoration, cross-tab changes, fonts, playback, export cancellation, MP4 output and saved renders',

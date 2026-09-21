@@ -198,6 +198,32 @@ try {
     'Continuing background keeps the primary group slot',
   );
 
+  // A background vocal the viewer cannot see must not hold an empty row open.
+  ttml = ttmlDocument(`
+    <p begin="1s" end="9s"><span begin="1s" end="9s">Carrier</span><span ttm:role="x-bg" begin="1s" end="3s"><span begin="1s" end="3s">Brief echo</span></span></p>
+    <p begin="10s" end="12s"><span begin="10s" end="12s">Follower</span></p>`);
+  await load();
+  const rowHeight = (text: string) =>
+    page.evaluate((text) => {
+      const main = Array.from(
+        document.querySelectorAll<HTMLElement>('[class*="_lyricMainLine"]'),
+      ).find((el) => el.textContent?.trim() === text)!;
+      return main.closest<HTMLElement>('[class*="_lyricLineWrapper"]')!.offsetHeight;
+    }, text);
+  await frame(500);
+  const dormant = await rowHeight('Carrier');
+  await frame(2000);
+  const singing = await rowHeight('Carrier');
+  assert(singing > dormant, `An audible background takes a row: ${singing} vs ${dormant}`);
+  await frame(3600);
+  assert.equal(
+    await rowHeight('Carrier'),
+    dormant,
+    'A finished background releases its row while its primary keeps singing',
+  );
+  await advance(3600, 5000);
+  assert.equal(await rowHeight('Carrier'), dormant, 'Playback releases the row too');
+
   ttml = ttmlDocument(`
     <p ttm:agent="v1" begin="0s" end="10s"><span begin="0s" end="10s">A longer lyric sentence that wraps onto several rows inside a narrow video</span></p>
     <p ttm:agent="v2" begin="0s" end="10s"><span begin="0s" end="10s">Another singer has a longer sentence that must also fit above the bottom margin</span></p>
@@ -222,10 +248,7 @@ try {
   await load();
   await frame(2000);
   const tiny = await state();
-  assert(
-    tiny.lines[0]!.top >= tiny.top && tiny.lines[0]!.bottom <= tiny.bottom,
-    'A tiny cap preserves the entire first wrapped entry',
-  );
+  assert(Math.abs(tiny.height - 5.4) < 0.1, 'A 1% cap is enforced even when a line cannot fit');
 
   settings = { ...settings, height: 0, fontSize: 15 };
   await load();

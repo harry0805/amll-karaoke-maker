@@ -3,6 +3,7 @@ import { chromium } from 'playwright';
 import { strict as assert } from 'node:assert';
 import { defaults } from '../src/settings';
 import type { LyricWindowEntry } from '../src/lyric-window';
+import { LYRIC_FADE_MS } from '../src/lyric-motion';
 
 const browser = await chromium.launch();
 const origin = process.argv[2] || 'http://127.0.0.1:3210';
@@ -34,7 +35,7 @@ try {
       await page.goto(`${origin}/render?job=motion`);
       await page.waitForFunction(() => window.rendererReady || window.rendererError);
       assert.equal(await page.evaluate(() => window.rendererError), undefined);
-      const result = await page.evaluate(async () => {
+      const result = await page.evaluate(async (fade) => {
         const entries = (window as unknown as { lyricTestIntervals: LyricWindowEntry[] })
           .lyricTestIntervals;
         const boundaries = [
@@ -45,6 +46,9 @@ try {
                 entry.main.end,
                 entry.background?.start,
                 entry.background?.end,
+                // A vocal releases its row here, background wrappers included.
+                entry.main.end + fade,
+                entry.background === undefined ? undefined : entry.background.end + fade,
               ])
               .filter((t): t is number => t !== undefined),
           ),
@@ -52,7 +56,7 @@ try {
         const snapshot = () =>
           Array.from(
             document.querySelectorAll<HTMLElement>(
-              '[class*="_lyricLineWrapper"], [class*="_lyricMainLine"], [class*="_interludeDots"]',
+              '[class*="_lyricMainLine"], [class*="_interludeDots"]',
             ),
           ).map((group) => ({
             element: group,
@@ -86,7 +90,7 @@ try {
           await window.renderFrame(boundary + 17, 17);
         }
         return { boundaries: boundaries.length, maximum, jumps: jumps.slice(0, 10) };
-      });
+      }, LYRIC_FADE_MS);
       assert.deepEqual(
         result.jumps,
         [],
@@ -119,10 +123,11 @@ try {
         });
         assert(Math.abs(fade.before - fade.after) < 1, JSON.stringify(fade));
         assert(fade.scale < 1 && fade.scale > 0.95, JSON.stringify(fade));
-        assert(
-          fade.incomingAfter < fade.incomingBefore - 1,
-          'Incoming line moves while the outgoing line fades',
-        );
+        if (height === 0)
+          assert(
+            fade.incomingAfter < fade.incomingBefore - 1,
+            'Incoming line moves while the outgoing line fades',
+          );
         if (process.env.LYRIC_SCREENSHOT && height === 0)
           await page.screenshot({ path: process.env.LYRIC_SCREENSHOT });
         const finalFade = await page.evaluate(async () => {

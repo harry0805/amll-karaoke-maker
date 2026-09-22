@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <base href="/" />
+    <title>Bundled font render regression</title>
+    <script type="module" src="/tests/font-render.ts"></script>
+    <style>
+      body {
+        margin: 20px;
+        background: #181820;
+        color: white;
+        font: 16px sans-serif;
+      }
+      #stage {
+        width: 640px !important;
+      }
+      canvas {
+        width: 640px;
+        background: black;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Bundled font render regression</h1>
+    <button id="run">Run font checks</button>
+    <pre id="results">Ready</pre>
+    <h2>Live preview</h2>
+    <div id="stage">
+      <div id="shade"></div>
+      <div id="lyrics"></div>
+    </div>
+    <h2>Rendered frame</h2>
+    <div id="output"></div>
+  </body>
+</html>

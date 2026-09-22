@@ -110,7 +110,9 @@ export async function lyricFontCSS(font: FontKey): Promise<string> {
   if (!pending) {
     const node = document.createElement('span');
     node.style.fontFamily = bundledFamilies[font]!;
-    pending = getFontEmbedCSS(node, { preferredFontFormat: 'woff2' });
+    // Bundled variable fonts declare format('woff2-variations'). An exact
+    // 'woff2' preference strips their src rules and makes snapshots fall back.
+    pending = getFontEmbedCSS(node);
     embeddedFonts.set(font, pending);
     pending.catch(() => embeddedFonts.delete(font));
   }

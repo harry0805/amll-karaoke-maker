@@ -54,7 +54,7 @@ test('line limits validate and older v1 settings receive the new defaults', () =
 test('new appearance ranges validate boundaries and duet settings', () => {
   for (const [key, min, max] of [
     ['fontSize', 1, 15],
-    ['lineSpacing', 0.75, 1.5],
+    ['lineSpacing', 0.5, 1.5],
     ['bottom', 0, 80],
     ['horizontalMargin', 0, 40],
     ['height', 1, 100],

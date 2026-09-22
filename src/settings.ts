@@ -65,7 +65,7 @@ export function validateSettings(input: unknown): SettingsSnapshot {
     s.visibleLines = 10;
   for (const [key, min, max] of [
     ['fontSize', 1, 15],
-    ['lineSpacing', 0.75, 1.5],
+    ['lineSpacing', 0.5, 1.5],
     ['bottom', 0, 80],
     ['horizontalMargin', 0, 40],
     ['height', 1, 100],

@@ -20,10 +20,10 @@
       key: 'lineSpacing',
       label: 'Line spacing',
       info: 'Adjust the space between lyric rows.',
-      min: 0.75,
+      min: 0.5,
       max: 1.5,
       step: 0.05,
-      format: (n: number) => `${n.toFixed(2)}×`,
+      format: (n: number) => `${n}x`,
     },
     {
       key: 'bottom',

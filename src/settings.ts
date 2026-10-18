@@ -1,5 +1,20 @@
+import { LocalizedError } from './messages';
 import { fonts } from './font-catalog';
 export { fonts } from './font-catalog';
+const invalidSettingMessages = {
+  fontSize: 'settings.invalidFontSize',
+  lineSpacing: 'settings.invalidLineSpacing',
+  bottom: 'settings.invalidBottom',
+  horizontalMargin: 'settings.invalidHorizontalMargin',
+  height: 'settings.invalidHeight',
+  shadeHeight: 'settings.invalidShadeHeight',
+  duetOutlineWidth: 'settings.invalidDuetOutlineWidth',
+  offset: 'settings.invalidOffset',
+  shade: 'settings.invalidShade',
+  shadeFadeStart: 'settings.invalidShadeFadeStart',
+  outlineWidth: 'settings.invalidOutlineWidth',
+} as const;
+
 /** Persisted choices that presets never replace. */
 export interface Preferences {
   offset: number;
@@ -56,7 +71,8 @@ export const presetDefaults: PresetSettings = {
 export const defaults: SettingsSnapshot = { ...presetDefaults, ...preferenceDefaults };
 
 export function validateSettings(input: unknown): SettingsSnapshot {
-  if (!input || typeof input !== 'object') throw new Error('Invalid export settings.');
+  if (!input || typeof input !== 'object')
+    throw new LocalizedError('settings.invalidExportSettings');
   // These fields were added to the v1 format. Preserve older settings/presets.
   const s = { visibleLines: 2, keepScrollNearEnd: false, ...input } as SettingsSnapshot;
   // Preserve the old unlimited height and clamp older 11..20 line presets.
@@ -77,16 +93,18 @@ export function validateSettings(input: unknown): SettingsSnapshot {
     ['outlineWidth', 0, 12],
   ] as const) {
     if (typeof s[key] !== 'number' || !Number.isFinite(s[key]) || s[key] < min || s[key] > max)
-      throw new Error(`Invalid ${key}.`);
+      throw new LocalizedError(invalidSettingMessages[key]);
   }
-  if (typeof s.useDuetColors !== 'boolean') throw new Error('Invalid useDuetColors.');
+  if (typeof s.useDuetColors !== 'boolean')
+    throw new LocalizedError('settings.invalidUseDuetColors');
   if (!Number.isInteger(s.visibleLines) || s.visibleLines < 0 || s.visibleLines > 10)
-    throw new Error('Visible lines must be 1 to 10, or 0 for unlimited.');
-  if (typeof s.keepScrollNearEnd !== 'boolean') throw new Error('Invalid keepScrollNearEnd.');
+    throw new LocalizedError('settings.visibleLinesMustBe1To10');
+  if (typeof s.keepScrollNearEnd !== 'boolean')
+    throw new LocalizedError('settings.invalidKeepScrollNearEnd');
   if (typeof s.showLyricsBeforeStart !== 'boolean')
-    throw new Error('Invalid showLyricsBeforeStart.');
+    throw new LocalizedError('settings.invalidShowLyricsBeforeStart');
   if (typeof s.font !== 'string' || !Object.hasOwn(fonts, s.font))
-    throw new Error('Choose a supported font.');
+    throw new LocalizedError('settings.chooseASupportedFont');
   for (const color of [
     s.backgroundColor,
     s.textColor,
@@ -95,7 +113,7 @@ export function validateSettings(input: unknown): SettingsSnapshot {
     s.duetOutlineColor,
   ])
     if (typeof color !== 'string' || !/^#[0-9a-f]{6}$/i.test(color))
-      throw new Error('Choose a valid color.');
+      throw new LocalizedError('settings.chooseAValidColor');
   return {
     backgroundColor: s.backgroundColor,
     useDuetColors: s.useDuetColors,

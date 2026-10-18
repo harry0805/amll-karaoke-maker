@@ -1,3 +1,4 @@
+import { LocalizedError } from './messages';
 import { defaults, pickPresetSettings, validateSettings, type PresetSettings } from './settings';
 
 export interface Preset {
@@ -10,7 +11,7 @@ const STORAGE_FORMAT = 'karaoke-studio-preset-library';
 export const MAX_PRESETS = 100;
 export function presetName(value: unknown): string {
   if (typeof value !== 'string' || !value.trim() || value.trim().length > 80)
-    throw new Error('Enter a preset name between 1 and 80 characters.');
+    throw new LocalizedError('presets.enterAPresetNameBetween1And');
   return value.trim();
 }
 export function serializePresets(presets: Pick<Preset, 'name' | 'settings'>[]): string {
@@ -28,14 +29,15 @@ export function serializePresets(presets: Pick<Preset, 'name' | 'settings'>[]): 
   );
 }
 export function parsePresets(text: string): Preset[] {
-  if (text.length > 1024 * 1024) throw new Error('Preset files must be smaller than 1 MB.');
+  if (text.length > 1024 * 1024) throw new LocalizedError('presets.presetFilesMustBeSmallerThan1');
   let data: unknown;
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error('This file is not valid JSON. Choose a preset exported from Karaoke Maker.');
+    throw new LocalizedError('presets.thisFileIsNotValidJSONChoose');
   }
-  if (!data || typeof data !== 'object') throw new Error('Choose a Karaoke Maker preset file.');
+  if (!data || typeof data !== 'object')
+    throw new LocalizedError('presets.chooseAKaraokeMakerPresetFile');
   const document = data as { format?: unknown; version?: unknown; presets?: unknown };
 
   if (
@@ -45,10 +47,10 @@ export function parsePresets(text: string): Preset[] {
     !document.presets.length ||
     document.presets.length > MAX_PRESETS
   )
-    throw new Error('Choose a version 1 Karaoke Maker preset file containing 1 to 100 presets.');
+    throw new LocalizedError('presets.chooseAVersion1KaraokeMakerPreset');
   return document.presets.map((entry: unknown) => {
     if (!entry || typeof entry !== 'object')
-      throw new Error('Each preset needs a name and settings.');
+      throw new LocalizedError('presets.eachPresetNeedsANameAndSettings');
     const preset = entry as { name?: unknown; settings?: unknown };
     return {
       id: crypto.randomUUID(),
@@ -59,7 +61,7 @@ export function parsePresets(text: string): Preset[] {
 }
 export function mergePresets(existing: Preset[], incoming: Preset[]): Preset[] {
   if (existing.length + incoming.length > MAX_PRESETS)
-    throw new Error('You can store up to 100 presets. Delete some before importing more.');
+    throw new LocalizedError('presets.youCanStoreUpTo100Presets');
   const ids = new Set(existing.map((p) => p.id));
   return [
     ...existing,
@@ -89,18 +91,18 @@ export function parseStoredPresets(text: string): Preset[] {
     !Array.isArray(data.presets) ||
     data.presets.length > MAX_PRESETS
   )
-    throw new Error('Invalid saved preset library.');
-  if (data.format !== STORAGE_FORMAT) throw new Error('Invalid saved preset library.');
+    throw new LocalizedError('presets.invalidSavedPresetLibrary');
+  if (data.format !== STORAGE_FORMAT) throw new LocalizedError('presets.invalidSavedPresetLibrary');
   const ids = new Set<string>();
   return data.presets.map((entry: unknown) => {
-    if (!entry || typeof entry !== 'object') throw new Error('Invalid saved preset.');
+    if (!entry || typeof entry !== 'object') throw new LocalizedError('presets.invalidSavedPreset');
     const preset = entry as Partial<Preset>;
     if (
       typeof preset.id !== 'string' ||
       !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(preset.id) ||
       ids.has(preset.id)
     )
-      throw new Error('Invalid saved preset ID.');
+      throw new LocalizedError('presets.invalidSavedPresetID');
     ids.add(preset.id);
     return {
       id: preset.id,
@@ -110,15 +112,21 @@ export function parseStoredPresets(text: string): Preset[] {
   });
 }
 
-export function presetLabel(name: string, saved: PresetSettings, current: PresetSettings): string {
+export function presetLabel(
+  name: string,
+  saved: PresetSettings,
+  current: PresetSettings,
+  modifiedSuffix = ' (Modified)',
+): string {
   const modified = (Object.keys(pickPresetSettings(current)) as (keyof PresetSettings)[]).some(
     (key) => saved[key] !== current[key],
   );
-  return name + (modified ? ' (Modified)' : '');
+  return name + (modified ? modifiedSuffix : '');
 }
 
 function validatePresetSettings(input: unknown): PresetSettings {
-  if (!input || typeof input !== 'object') throw new Error('Invalid preset settings.');
+  if (!input || typeof input !== 'object')
+    throw new LocalizedError('presets.invalidPresetSettings');
   return pickPresetSettings(
     validateSettings({
       offset: defaults.offset,

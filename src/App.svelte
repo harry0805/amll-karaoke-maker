@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { message, errorMessage, type DisplayMessage } from './messages';
+  import { t, translateMessage } from './i18n';
+
   import { onMount, tick, untrack } from 'svelte';
   import { StudioState } from './studio.svelte';
   import { deviceFontNames } from './font-catalog';
@@ -32,13 +35,13 @@
     };
   });
   let settingsRestored = $state(false);
-  let storageError = $state('');
+  let storageError = $state<DisplayMessage>('');
   onMount(() => {
     try {
       const saved = restoreCurrentSettings(sessionStorage, localStorage);
       if (saved) studio.configure({ ...saved.presetSettings, ...saved.preferences });
     } catch {
-      storageError = 'Browser storage is unavailable. Settings may not survive closing this tab.';
+      storageError = message('app.storageUnavailable');
     }
     settingsRestored = true;
   });
@@ -53,14 +56,14 @@
         persistCurrentSettings(current, sessionStorage, localStorage);
         storageError = '';
       } catch (error) {
-        storageError = String(error);
+        storageError = errorMessage(error);
       }
     });
   });
   const steps = [
-    { id: 'source', label: 'Source', icon: 'folder-open' },
-    { id: 'settings', label: 'Settings', icon: 'sliders-horizontal' },
-    { id: 'export', label: 'Render', icon: 'film' },
+    { id: 'source', label: 'app.source', icon: 'folder-open' },
+    { id: 'settings', label: 'app.settings', icon: 'sliders-horizontal' },
+    { id: 'export', label: 'app.render', icon: 'film' },
   ] as const;
   let currentStep = $state(0);
   let pendingStep = 1;
@@ -69,7 +72,7 @@
   let scroll: HTMLDivElement;
   let compatibilityDialog: HTMLDialogElement;
   let fontDialog: HTMLDialogElement;
-  let missingFont = $state('');
+  let missingFont = $state<DisplayMessage>('');
 
   async function selectStep(index: number, focus = false) {
     currentStep = index;
@@ -110,7 +113,7 @@
     const deviceName = deviceFontNames[studio.presetSettings.font as keyof typeof deviceFontNames];
     const font = studio.session.deviceFonts.find((font) => font.key === studio.presetSettings.font);
     if (deviceName && font && !font.available) {
-      missingFont = `This preset uses "${deviceName}", which is unavailable on this device. Install it on your system and reload this page, or choose another font in Settings. A fallback font is being used for now.`;
+      missingFont = message('app.missingFont', { name: deviceName });
       const frame = requestAnimationFrame(() => fontDialog.showModal());
       return () => cancelAnimationFrame(frame);
     }
@@ -136,12 +139,12 @@
     <Preview {studio} />
     <aside
       class="relative flex min-h-0 flex-col gap-0 [grid-area:steps] max-studio:h-auto studio:before:pointer-events-none studio:before:absolute studio:before:top-0 studio:before:bottom-6 studio:before:-left-[18px] studio:before:w-px studio:before:bg-divider studio:before:content-['']"
-      aria-label="Video setup"
+      aria-label={$t('app.videoSetup')}
     >
       <div
         class="flex flex-none gap-1 border-0 border-b border-solid border-[#303037] pb-3 [&_svg]:size-[15px]"
         role="tablist"
-        aria-label="Setup steps"
+        aria-label={$t('app.setupSteps')}
       >
         {#each steps as step, index}
           <button
@@ -154,7 +157,7 @@
             bind:this={tabs[index]}
             onclick={() => requestStep(index)}
             onkeydown={(event) => tabKey(event, index)}
-            ><Icon name={step.icon} /><span>{step.label}</span></button
+            ><Icon name={step.icon} /><span>{$t(step.label)}</span></button
           >
         {/each}
       </div>
@@ -186,7 +189,7 @@
           />
           <SettingsPanel {studio} />
           <p role="status" class="mt-3 text-[13px] text-muted" hidden={!storageError}>
-            {storageError}
+            {$translateMessage(storageError)}
           </p>
         </div>
         <div
@@ -205,7 +208,7 @@
             hidden={currentStep === 2}
             onclick={() => requestStep(Math.min(2, currentStep + 1), true)}
             ><span id="next-step-label"
-              >{currentStep === 0 ? 'Next: Settings' : 'Next: Render'}</span
+              >{$t(currentStep === 0 ? 'app.nextSettings' : 'app.nextRender')}</span
             ><span aria-hidden="true"><Icon name="arrow-right" /></span></button
           >
         </div>
@@ -222,22 +225,21 @@
   bind:this={browserSupportDialog}
 >
   <h2 class="mt-0 mb-2.5 text-[20px] font-semibold" id="browser-support-title">
-    {iosWebKitBrowser ? `${iosWebKitBrowser} on iOS is not supported` : 'Browser unsupported'}
+    {$t(iosWebKitBrowser ? 'app.iosUnsupported' : 'app.browserUnsupported', {
+      browser: iosWebKitBrowser || '',
+    })}
   </h2>
   <p class="m-0 text-[14px] leading-[1.6] text-[#aaaab4]" id="browser-support-description">
     {#if iosWebKitBrowser}
-      Preview and video rendering may have issues. This version of {iosWebKitBrowser} uses WebKit,
-      the same underlying browser engine as Safari, which is not supported. Try using Chrome, 
-      Edge, or Firefox on an android phone or a computer instead.
+      {$t('app.iosWarning', { browser: iosWebKitBrowser })}
     {:else}
-      Preview and video rendering may have issues. Use a Chromium-based browser, such as Chrome or
-      Edge, or Firefox. Safari and most iOS browsers are not supported.
+      {$t('app.previewAndVideoRenderingMayHaveIssues2')}
     {/if}
   </p>
   <form method="dialog" class="mt-6 flex flex-wrap justify-end gap-2.5">
     <button
       class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border border-solid border-accent bg-accent px-[15px] py-[9px] text-[13px] text-accent-ink outline-offset-[5px] hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border disabled:cursor-default disabled:opacity-35"
-      id="browser-support-proceed">Proceed anyway</button
+      id="browser-support-proceed">{$t('app.proceedAnyway')}</button
     >
   </form>
 </dialog>
@@ -252,22 +254,25 @@
   }}
 >
   <h2 class="mt-0 mb-2.5 text-[20px] font-semibold" id="compatibility-title">
-    This video may not render
+    {$t('app.thisVideoMayNotRender')}
   </h2>
   <p class="m-0 text-[14px] leading-[1.6] text-[#aaaab4]" id="compatibility-description">
-    You can continue editing, but this source has render compatibility issues.
+    {$t('app.youCanContinueEditingButThisSource')}
   </p>
   <ul
     class="mt-5 mb-6 pl-[18px] text-[13px] leading-[1.6] text-[#dec994] [&>li+li]:mt-2.5"
     id="compatibility-reasons"
   >
-    {#each studio.session.compatibilityWarnings as warning}<li>{warning}</li>{/each}
+    {#each studio.session.compatibilityWarnings as warning}<li>
+        {$translateMessage(warning)}
+      </li>{/each}
   </ul>
   <div class="flex flex-wrap justify-end gap-2.5">
     <button
       class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border border-solid border-control-border bg-control px-[15px] py-[9px] text-[13px] text-[#eee] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border disabled:cursor-default disabled:opacity-35"
       id="stay-source"
-      onclick={() => compatibilityDialog.close()}><Icon name="x" /><span>Cancel</span></button
+      onclick={() => compatibilityDialog.close()}
+      ><Icon name="x" /><span>{$t('app.cancel')}</span></button
     ><button
       class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border border-solid border-accent bg-accent px-[15px] py-[9px] text-[13px] text-accent-ink outline-offset-[5px] hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border disabled:cursor-default disabled:opacity-35"
       id="proceed-anyway"
@@ -275,7 +280,7 @@
         studio.session.compatibilityAccepted = true;
         compatibilityDialog.close();
         void selectStep(pendingStep, true);
-      }}>Proceed anyway</button
+      }}>{$t('app.proceedAnyway')}</button
     >
   </div>
 </dialog>
@@ -286,14 +291,16 @@
   aria-describedby="preset-font-description"
   bind:this={fontDialog}
 >
-  <h2 class="mt-0 mb-2.5 text-[20px] font-semibold" id="preset-font-title">Font unavailable</h2>
+  <h2 class="mt-0 mb-2.5 text-[20px] font-semibold" id="preset-font-title">
+    {$t('app.fontUnavailable')}
+  </h2>
   <p class="m-0 text-[14px] leading-[1.6] text-[#aaaab4]" id="preset-font-description">
-    {missingFont}
+    {$translateMessage(missingFont)}
   </p>
   <form method="dialog" class="mt-6 flex flex-wrap justify-end gap-2.5">
     <button
       class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border border-solid border-accent bg-accent px-[15px] py-[9px] text-[13px] text-accent-ink outline-offset-[5px] hover:bg-accent-hover focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border disabled:cursor-default disabled:opacity-35"
-      id="preset-font-confirm">OK</button
+      id="preset-font-confirm">{$t('app.oK')}</button
     >
   </form>
 </dialog>

@@ -1,3 +1,4 @@
+import { LocalizedError } from './messages';
 // Keep the original device-font choices, including the existing rounded default.
 export const fonts = {
   rounded: '"Arial Rounded MT Bold", "SF Pro Rounded", Arial, "PingFang SC", sans-serif',
@@ -62,12 +63,12 @@ export const bundledFamilies: Partial<Record<FontKey, string>> = {
 
 export function validateFontFile(name: string, bytes: ArrayBuffer) {
   if (!/\.(ttf|otf|woff2?)$/i.test(name))
-    throw new Error('Choose a TTF, OTF, WOFF, or WOFF2 font.');
+    throw new LocalizedError('fontCatalog.chooseATTFOTFWOFFOrWOFF2');
   if (bytes.byteLength < 4 || bytes.byteLength > 32 * 1024 * 1024)
-    throw new Error('Choose a font between 4 bytes and 32 MB.');
+    throw new LocalizedError('fontCatalog.chooseAFontBetween4BytesAnd');
   const magic = new DataView(bytes).getUint32(0);
   if (![0x00010000, 0x4f54544f, 0x774f4646, 0x774f4632, 0x74727565].includes(magic))
-    throw new Error('This file is not a supported font.');
+    throw new LocalizedError('fontCatalog.thisFileIsNotASupportedFont');
 }
 
 export const deviceFontNames = {

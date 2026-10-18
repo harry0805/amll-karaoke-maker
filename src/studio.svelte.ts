@@ -1,3 +1,4 @@
+import { LocalizedError, message, errorMessage, type DisplayMessage } from './messages';
 import {
   presetDefaults,
   preferenceDefaults,
@@ -25,23 +26,27 @@ export class SessionState {
   // Runtime state belongs to this mounted studio and is never serialized as settings.
   videoFile = $state<File>();
   ttmlFile = $state<File>();
-  ttmlName = $state('Choose TTML');
-  lyricsInfo = $state('Word timing comes from your TTML file.');
+  ttmlName = $state<DisplayMessage>(message('studio.chooseTTML'));
+  lyricsInfo = $state<DisplayMessage>(message('studio.wordTimingHelp'));
   loaded = $state(false);
   videoError = $state(false);
   exporting = $state(false);
   fontLoading = $state(true);
   fontUploadBusy = $state(false);
-  fontError = $state('');
-  offsetError = $state('');
+  fontError = $state<DisplayMessage>('');
+  offsetError = $state<DisplayMessage>('');
   customName = $state('');
   deviceFonts = $state<Awaited<ReturnType<typeof detectDeviceFonts>>>([]);
-  errors = $state({ source: '', settings: '', export: '' });
-  compatibilityWarnings = $state<string[]>([]);
+  errors = $state<Record<'source' | 'settings' | 'export', DisplayMessage>>({
+    source: '',
+    settings: '',
+    export: '',
+  });
+  compatibilityWarnings = $state<DisplayMessage[]>([]);
   compatibilityChecking = $state(false);
   compatibilityAccepted = $state(false);
   progress = $state(0);
-  status = $state('');
+  status = $state<DisplayMessage>('');
   previewVisible = $state(false);
   renderTime = $state(0);
   renderDuration = $state(0);
@@ -60,27 +65,26 @@ export class StudioState {
   }
 
   requirements = $derived.by(() => {
-    const reasons: string[] = [];
-    if (this.session.exporting) reasons.push('A render is already running.');
+    const reasons: DisplayMessage[] = [];
+    if (this.session.exporting) reasons.push(message('studio.renderRunning'));
     else {
-      if (!this.session.videoFile) reasons.push('Load a video in Source to render.');
+      if (!this.session.videoFile) reasons.push(message('studio.loadVideo'));
       else if (!this.session.loaded)
         reasons.push(
           this.session.videoError
-            ? 'The video could not be loaded. Choose a supported video in Source.'
-            : 'Waiting for the video to load.',
+            ? message('studio.videoLoadFailed')
+            : message('studio.waitingForVideo'),
         );
-      if (!this.session.ttmlFile)
-        reasons.push('Load a valid TTML lyrics file in Source to render.');
+      if (!this.session.ttmlFile) reasons.push(message('studio.loadLyrics'));
     }
     if (this.session.fontLoading || this.session.fontUploadBusy)
-      reasons.push('Wait for the font to finish loading.');
+      reasons.push(message('studio.waitingForFont'));
     if (this.session.fontError) reasons.push(this.session.fontError);
     if (this.settingsSnapshot.font === 'custom' && !this.session.customName)
-      reasons.push('Upload a custom font in Settings or choose another font before rendering.');
+      reasons.push(message('studio.customFontRequired'));
     if (this.session.errors.settings) reasons.push(this.session.errors.settings);
     if (this.session.offsetError) reasons.push(this.session.offsetError);
-    return reasons.join(' ');
+    return reasons;
   });
 
   private lyrics?: Lyrics;
@@ -115,11 +119,11 @@ export class StudioState {
   }
 
   private async initializeFonts() {
-    let restoreError = '';
+    let restoreError: DisplayMessage = '';
     try {
       await initializeCustomFont();
     } catch (error) {
-      restoreError = String(error);
+      restoreError = errorMessage(error);
     }
     if (this.disposed) return;
     this.session.customName = customFontName() || '';
@@ -154,7 +158,7 @@ export class StudioState {
       this.pendingFontChange ||= fontChanged;
       this.session.errors[source] = '';
     } catch (error) {
-      this.session.errors[source] = String(error);
+      this.session.errors[source] = errorMessage(error);
     }
   }
 
@@ -169,7 +173,7 @@ export class StudioState {
       this.session.offsetError =
         typeof value === 'number' && Number.isFinite(value) && value >= -600000 && value <= 600000
           ? ''
-          : 'Invalid offset.';
+          : message('studio.invalidOffset');
     }
     this.configure({ ...this.settingsSnapshot, [key]: value }, 'source');
   }
@@ -182,7 +186,7 @@ export class StudioState {
     try {
       await this.lyrics.refreshFont();
     } catch (error) {
-      if (request === this.fontRequest) this.session.fontError = String(error);
+      if (request === this.fontRequest) this.session.fontError = errorMessage(error);
     } finally {
       if (request === this.fontRequest) this.session.fontLoading = false;
     }
@@ -199,7 +203,7 @@ export class StudioState {
       this.session.customName = customFontName() || '';
       await this.refreshFont();
     } catch (error) {
-      if (!this.disposed) this.session.fontError = String(error);
+      if (!this.disposed) this.session.fontError = errorMessage(error);
     } finally {
       this.session.fontUploadBusy = false;
     }
@@ -215,7 +219,7 @@ export class StudioState {
     this.session.compatibilityWarnings = [];
     this.session.compatibilityChecking = true;
     this.compatibility = checkExportCompatibility(file)
-      .catch(() => ['Render compatibility could not be checked. This file may not be rendered.'])
+      .catch(() => [message('studio.compatibilityUnknown')])
       .then((warnings) => {
         if (this.session.videoFile !== file || this.disposed) return;
         this.session.compatibilityWarnings = warnings;
@@ -242,19 +246,25 @@ export class StudioState {
     this.session.ttmlFile = undefined;
     this.session.errors.source = '';
     try {
-      if (file.size > 10 * 1024 ** 2) throw new Error('TTML file must be smaller than 10 MB.');
+      if (file.size > 10 * 1024 ** 2)
+        throw new LocalizedError('studio.tTMLFileMustBeSmallerThan10');
       const text = await file.text();
       if (generation !== this.lyricGeneration) return;
       const lines = await this.lyrics.load(text);
       if (generation !== this.lyricGeneration) return;
       this.session.ttmlFile = file;
       this.session.ttmlName = file.name;
-      this.session.lyricsInfo = `${lines.length} lines loaded. ${lines.some((line) => line.words.length > 1) ? 'Word timing ready.' : 'Line timing only. Word fill needs word-timed TTML.'}`;
+      this.session.lyricsInfo = message(
+        lines.some((line) => line.words.length > 1)
+          ? 'studio.wordTimedLines'
+          : 'studio.lineTimedLines',
+        { count: lines.length },
+      );
       await this.frame(0, true);
     } catch (error) {
       if (generation === this.lyricGeneration) {
-        this.session.ttmlName = 'Choose another TTML';
-        this.session.errors.source = String(error);
+        this.session.ttmlName = message('studio.chooseAnotherTTML');
+        this.session.errors.source = errorMessage(error);
       }
     }
   }
@@ -307,7 +317,7 @@ export class StudioState {
 
   async render() {
     if (
-      this.requirements ||
+      this.requirements.length ||
       !this.session.videoFile ||
       !this.session.ttmlFile ||
       !this.canvas ||
@@ -321,7 +331,7 @@ export class StudioState {
       requireCustomFont(settings.font);
       this.session.exporting = true;
       this.video.pause();
-      this.session.status = 'Preparing render…';
+      this.session.status = message('studio.preparingRender');
       this.session.progress = 0;
       await exportVideo({
         video: this.session.videoFile,
@@ -335,20 +345,24 @@ export class StudioState {
           this.session.previewVisible = true;
           this.session.progress = Math.min(0.99, time / duration);
           this.session.status = finishing
-            ? 'Finishing MP4…'
-            : `Rendering ${Math.round((time / duration) * 100)}% · ${frames} frames · ${fps.toFixed(1)} fps`;
+            ? message('studio.finishingRender')
+            : message('studio.renderProgress', {
+                percent: Math.round((time / duration) * 100),
+                frames,
+                fps: fps.toFixed(1),
+              });
           this.session.renderTime = time;
           this.session.renderDuration = duration;
         },
       });
       this.session.savedRevision++;
       this.session.progress = 1;
-      this.session.status = 'Render saved on this device';
+      this.session.status = message('studio.renderSaved');
     } catch (error) {
-      if (controller.signal.aborted) this.session.status = 'Render cancelled';
+      if (controller.signal.aborted) this.session.status = message('studio.renderCancelled');
       else {
-        this.session.errors.export = String(error);
-        this.session.status = 'Render failed';
+        this.session.errors.export = errorMessage(error);
+        this.session.status = message('studio.renderFailed');
       }
     } finally {
       this.controller = undefined;
@@ -361,6 +375,6 @@ export class StudioState {
 
   cancel() {
     this.controller?.abort();
-    this.session.status = 'Cancelling…';
+    this.session.status = message('studio.cancelling');
   }
 }

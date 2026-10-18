@@ -1,3 +1,4 @@
+import { LocalizedError } from './messages';
 import { initializeCustomFont, requireCustomFont } from './font-runtime';
 import {
   ALL_FORMATS,
@@ -55,9 +56,7 @@ async function renderToFile(
     typeof VideoEncoder === 'undefined' ||
     typeof VideoDecoder === 'undefined'
   ) {
-    throw new Error(
-      'Browser rendering needs WebCodecs. Open this site over HTTPS or localhost in a recent Chrome, Edge, or Firefox.',
-    );
+    throw new LocalizedError('browserExport.browserRenderingNeedsWebCodecsOpenThisSite');
   }
   const input = new Input({
     source: new BlobSource(options.video, { maxCacheSize: 8 * 1024 ** 2 }),
@@ -83,18 +82,14 @@ async function renderToFile(
   try {
     const track = await input.getPrimaryVideoTrack();
     if (!track || !(await track.canDecode()))
-      throw new Error(
-        'This browser cannot decode the source video for rendering. Try an H.264 MP4.',
-      );
+      throw new LocalizedError('browserExport.thisBrowserCannotDecodeTheSourceVideo');
     const width = Math.ceil((await track.getDisplayWidth()) / 2) * 2;
     const height = Math.ceil((await track.getDisplayHeight()) / 2) * 2;
     const duration = await input.computeDuration();
     const audioTrack = await input.getPrimaryAudioTrack();
     const copyAudio = audioTrack && (await audioTrack.getCodec()) === 'aac';
     if (audioTrack && !copyAudio) {
-      throw new Error(
-        'Browser rendering supports AAC audio or video without audio. Convert the source audio to AAC before rendering.',
-      );
+      throw new LocalizedError('browserExport.browserRenderingSupportsAACAudioOrVideo');
     }
     const audioSource = copyAudio ? new EncodedAudioPacketSource('aac') : undefined;
     if (audioSource) output.addAudioTrack(audioSource);
@@ -180,9 +175,7 @@ async function renderToFile(
       !conversion.isValid ||
       conversion.discardedTracks.some(({ track }) => track !== audioTrack || !audioSource)
     ) {
-      throw new Error(
-        'This browser cannot encode this video or its audio as MP4. Try a recent Chrome, Edge, or Firefox with an H.264/AAC source. No tracks were rendered.',
-      );
+      throw new LocalizedError('browserExport.thisBrowserCannotEncodeThisVideoOr');
     }
     signal.throwIfAborted();
     conversion.onProgress = (progress) => {

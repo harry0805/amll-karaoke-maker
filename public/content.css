@@ -24,6 +24,13 @@ body {
   line-height: 1.2;
   letter-spacing: -0.6px;
 }
+.site-content nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
 .site-content h2 {
   margin-top: 32px;
   font-size: 21px;

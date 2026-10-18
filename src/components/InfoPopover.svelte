@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t } from '../i18n';
+
   import { onMount } from 'svelte';
   let { label, text }: { label: string; text: string } = $props();
   const id = $props.id();
@@ -46,7 +48,7 @@
 <button
   bind:this={trigger}
   type="button"
-  aria-label={`About ${label}`}
+  aria-label={$t('infoPopover.about', { label })}
   aria-controls={id}
   aria-expanded={open}
   aria-haspopup="dialog"
@@ -72,7 +74,7 @@
   popover="auto"
   role="dialog"
   tabindex="-1"
-  aria-label={`About ${label}`}
+  aria-label={$t('infoPopover.about', { label })}
   class="fixed m-0 rounded-lg border border-solid border-divider bg-[#24242b] p-3 text-[13px] leading-relaxed text-[#eee] shadow-xl"
   ontoggle={() => {
     open = panel.matches(':popover-open');

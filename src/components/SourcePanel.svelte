@@ -1,6 +1,9 @@
 <script lang="ts">
+  import { t, translateMessage } from '../i18n';
+
   import type { StudioState } from '../studio.svelte';
   import Icon from './Icon.svelte';
+  import LinkedText from './LinkedText.svelte';
   let { studio }: { studio: StudioState } = $props();
 </script>
 
@@ -10,12 +13,13 @@
   <h2
     class="mt-0 mb-[17px] flex items-center gap-[9px] text-[16px] font-semibold [&>svg]:text-accent-text"
   >
-    <Icon name="files" />Source files
+    <Icon name="files" />{$t('sourcePanel.sourceFiles')}
   </h2>
   <label
     class="relative mb-2.5 block cursor-pointer rounded-lg border border-solid border-[#36363d] bg-panel p-3.5 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-accent focus-within:outline-solid hover:border-accent-border"
     ><span class="flex items-center gap-2.5 text-[12px] text-muted [&>svg]:text-accent-text"
-      ><Icon name="video" /><strong class="text-[14px] font-medium text-foreground">Video</strong
+      ><Icon name="video" /><strong class="text-[14px] font-medium text-foreground"
+        >{$t('sourcePanel.video')}</strong
       ></span
     ><input
       class="absolute inset-0 h-full w-full cursor-pointer opacity-0 outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
@@ -25,14 +29,14 @@
       disabled={studio.session.exporting}
       onchange={(event) => studio.loadVideo(event.currentTarget.files?.[0])}
     /><span class="mt-[9px] block truncate text-[14px] text-[#ababba]" id="video-name"
-      >{studio.session.videoFile?.name || 'Choose video'}</span
+      >{studio.session.videoFile?.name || $t('sourcePanel.chooseVideo')}</span
     ></label
   >
   <label
     class="relative mb-2.5 block cursor-pointer rounded-lg border border-solid border-[#36363d] bg-panel p-3.5 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-accent focus-within:outline-solid hover:border-accent-border"
     ><span class="flex items-center gap-2.5 text-[12px] text-muted [&>svg]:text-accent-text"
       ><Icon name="file-music" /><strong class="text-[14px] font-medium text-foreground"
-        >Lyrics</strong
+        >{$t('sourcePanel.lyrics')}</strong
       ></span
     ><input
       class="absolute inset-0 h-full w-full cursor-pointer opacity-0 outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
@@ -41,32 +45,35 @@
       disabled={studio.session.exporting}
       onchange={(event) => studio.loadTTML(event.currentTarget.files?.[0])}
     /><span class="mt-[9px] block truncate text-[14px] text-[#ababba]" id="ttml-name"
-      >{studio.session.ttmlName}</span
+      >{$translateMessage(studio.session.ttmlName)}</span
     ></label
   >
   <p
     id="lyrics-info"
     class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
   >
-    {studio.session.lyricsInfo}
+    {$translateMessage(studio.session.lyricsInfo)}
   </p>
   <p
     class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
   >
-    Create or edit lyrics for your song in <a
-      class="cursor-pointer outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
-      href="https://tool.amll.dev/"
-      target="_blank"
-      rel="noopener noreferrer">AMLL TTML Tool <Icon name="arrow-up-right" /></a
-    >, then import the TTML here.
+    <LinkedText messageKey="sourcePanel.lyricsTool">
+      {#snippet link()}<a
+          class="cursor-pointer outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
+          href="https://tool.amll.dev/"
+          target="_blank"
+          rel="noopener noreferrer">AMLL TTML Tool <Icon name="arrow-up-right" /></a
+        >{/snippet}
+    </LinkedText>
   </p>
 </section>
 <section
   class="mb-6 border-0 border-b border-solid border-divider pb-6 last:mb-0 last:border-0 last:pb-0"
 >
-  <h2 class="mt-0 mb-[17px] text-[16px] font-semibold">Timing</h2>
+  <h2 class="mt-0 mb-[17px] text-[16px] font-semibold">{$t('sourcePanel.timing')}</h2>
   <label class="mt-5 flex items-center justify-between text-[14px]" for="offset"
-    >Timing offset <div class="flex items-center gap-2 text-muted">
+    >{$t('sourcePanel.timingOffset')}
+    <div class="flex items-center gap-2 text-muted">
       <input
         class="w-[88px] rounded-[5px] border border-solid border-[#39393f] bg-field p-[7px] text-[#eee] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
         id="offset"
@@ -83,7 +90,7 @@
   <p
     class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
   >
-    Positive values make lyrics appear later.
+    {$t('sourcePanel.positiveValuesMakeLyricsAppearLater')}
   </p>
   <label class="mt-4 flex cursor-pointer items-center gap-2 text-[14px]"
     ><input
@@ -94,13 +101,13 @@
       disabled={studio.session.exporting}
       onchange={(event) =>
         studio.updatePreference('showLyricsBeforeStart', event.currentTarget.checked)}
-    /> Show lyrics before start</label
+    />
+    {$t('sourcePanel.showLyricsBeforeStart')}</label
   >
   <p
     class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
   >
-    When off, a positive offset delays the display, then fades it in. Normal prelude dots still
-    appear once the TTML timeline starts.
+    {$t('sourcePanel.whenOffAPositiveOffsetDelaysThe')}
   </p>
 </section>
 <p
@@ -109,7 +116,7 @@
   role="status"
   aria-live="polite"
 >
-  {studio.session.compatibilityChecking ? 'Checking render compatibility…' : ''}
+  {studio.session.compatibilityChecking ? $t('sourcePanel.checkingCompatibility') : ''}
 </p>
 <ul
   id="source-compatibility-issues"
@@ -117,7 +124,9 @@
   aria-live="polite"
   hidden={!studio.session.compatibilityWarnings.length}
 >
-  {#each studio.session.compatibilityWarnings as warning}<li>{warning}</li>{/each}
+  {#each studio.session.compatibilityWarnings as warning}<li>
+      {$translateMessage(warning)}
+    </li>{/each}
 </ul>
 <p
   id="source-error"
@@ -125,5 +134,5 @@
   role="alert"
   hidden={!studio.session.errors.source}
 >
-  {studio.session.errors.source}
+  {$translateMessage(studio.session.errors.source)}
 </p>

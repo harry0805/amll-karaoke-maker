@@ -1,3 +1,4 @@
+import { LocalizedError } from './messages';
 import { parseStoredPresets, serializeStoredPresets, type Preset } from './presets';
 
 export const PRESETS_KEY = 'karaoke-studio.presets.v1';
@@ -39,7 +40,5 @@ export function persistPresetSelection(id: string, session: Writer, local: Write
     }
   }
   if (failed)
-    throw new Error(
-      'Some browser storage is unavailable. Preset selection may not survive closing this tab.',
-    );
+    throw new LocalizedError('presetStorage.someBrowserStorageIsUnavailablePresetSelection');
 }

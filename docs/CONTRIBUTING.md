@@ -48,6 +48,25 @@ When changing settings, update validation, persistence, and preset handling as n
 
 When upgrading AMLL, review the local patch and check lyric playback, seeking, and exported video. The patch changes rendering behavior, so a successful dependency installation alone does not verify the upgrade.
 
+## Interface translations
+
+The studio and help guide use [i18next](https://www.i18next.com/) with English in `src/locales/en.json` and Simplified Chinese in `src/locales/zh.json`. Both catalogs cover interface controls, tooltips, dialogs, application errors, export progress, and page metadata. Tests require matching keys and interpolation placeholders. English fallback remains available for future additions.
+
+The first visit follows the browser's preferred languages, which normally come from the system. Chinese regional variants use the Chinese catalog. Other unsupported languages fall back to English. The header's language toggle saves an explicit choice under `karaoke-maker-language` in local storage. Switching still works if storage is unavailable.
+
+Add interface strings to both catalogs and render them with the reactive `$t` store from `src/i18n.ts`. Keys are flat, with a component or module prefix. Keep each sentence together and use named interpolation values such as `{{name}}`. Use i18next's plural suffixes for counts. `LinkedText.svelte` renders a real link at the catalog's `{link}` placeholder without inserting HTML. The static guide uses `data-i18n` attributes with the same catalogs and keeps English content available without JavaScript. Mark links inside translated paragraphs with `data-i18n-link`.
+
+For status messages kept in state, store `message(key, values)` from `src/messages.ts` and render with `$translateMessage`. Throw `LocalizedError` for application errors and retain the translation data with `errorMessage` when catching them. This lets existing messages update when the language changes. Known browser errors have translated explanations. Unknown errors retain their diagnostic text inside a translated message. Filenames, preset names, lyrics, brand names, font family names, and license texts retain their original text.
+
+Run the language checks against the development server:
+
+```sh
+bun tests/i18n-smoke.ts http://127.0.0.1:3000
+bun tests/chinese-ui-smoke.ts http://127.0.0.1:3000
+```
+
+These check browser language detection, saved overrides, switching with loaded lyrics, storage failures, phone widths, Chinese editing and export flows, and the help guide. Catalog and message checks also run with `bun test`.
+
 ## Check your changes
 
 For code changes, run:

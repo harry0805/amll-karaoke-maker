@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { message, errorMessage } from '../messages';
+  import { t } from '../i18n';
+
   import { onMount } from 'svelte';
   import type { StudioState } from '../studio.svelte';
   import Icon from './Icon.svelte';
@@ -39,7 +42,7 @@
         }
         if (!video.seeking) await studio.frame(video.paused ? 0 : now - previous);
       } catch (error) {
-        studio.session.errors.source = String(error);
+        studio.session.errors.source = errorMessage(error);
       }
       previous = now;
       if (stopped) return;
@@ -65,7 +68,7 @@
     pendingSeek = undefined;
     if (!Number.isFinite(video.duration) || !video.videoWidth) {
       studio.session.videoError = true;
-      studio.session.errors.source = 'Cannot determine the video duration. Try an MP4 video.';
+      studio.session.errors.source = message('preview.invalidDuration');
       return;
     }
     duration = video.duration;
@@ -81,7 +84,7 @@
       if (video.paused) await video.play();
       else video.pause();
     } catch (error) {
-      studio.session.errors.source = String(error);
+      studio.session.errors.source = errorMessage(error);
     }
   }
   function seek(time: number) {
@@ -147,8 +150,7 @@
           onerror={() => {
             studio.session.loaded = false;
             studio.session.videoError = true;
-            studio.session.errors.source =
-              'This browser cannot preview that video codec. Convert the source to an H.264 MP4 and try again.';
+            studio.session.errors.source = message('preview.unsupportedCodec');
           }}
         ></video>
         <canvas
@@ -156,7 +158,7 @@
           id="export-preview"
           bind:this={canvas}
           hidden={!studio.session.previewVisible}
-          aria-label="Frame being rendered"
+          aria-label={$t('preview.frameBeingRendered')}
         ></canvas>
         <div id="shade"></div>
         <div id="lyrics" bind:this={container}></div>
@@ -171,10 +173,10 @@
           ><Icon name="music-2" /></span
         >
         <h1 class="mt-[18px] mb-2 text-[23px] font-[550] tracking-[-0.7px] max-phone:text-[18px]">
-          Your video. In time with every word.
+          {$t('preview.yourVideoInTimeWithEveryWord')}
         </h1>
         <p class="m-0 max-w-[340px] text-[14px] leading-[1.6] text-[#93939f]">
-          Choose a music video and timed TTML lyrics to begin.
+          {$t('preview.chooseAMusicVideoAndTimedTTML')}
         </p>
       </div>
     </div>
@@ -185,7 +187,7 @@
     <input
       class="col-span-full m-0 w-full min-w-0 cursor-pointer accent-accent outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
       id="seek"
-      aria-label="Playback position"
+      aria-label={$t('preview.playbackPosition')}
       type="range"
       min="0"
       max={duration || 1}
@@ -196,15 +198,15 @@
     />
     <span
       class="min-w-0 text-[12px] whitespace-normal text-[#b0b0b8] max-phone:text-[10px]"
-      id="media-info">{studio.session.loaded ? `${width} × ${height}` : 'No video selected'}</span
+      id="media-info">{studio.session.loaded ? `${width} × ${height}` : $t('preview.noVideo')}</span
     >
     <div class="flex items-center gap-2.5 max-phone:gap-0">
       <button
         id="rewind"
         class="relative grid size-9 flex-none cursor-pointer place-items-center rounded-[7px] border border-solid border-transparent bg-transparent p-[7px] text-[#eee] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:bg-control disabled:cursor-default disabled:opacity-35 [&_svg]:size-[22px] [&_svg]:stroke-[1.7]"
         {disabled}
-        aria-label="Rewind 10 seconds"
-        title="Rewind 10 seconds"
+        aria-label={$t('preview.rewind10Seconds')}
+        title={$t('preview.rewind10Seconds')}
         onclick={() => seek((pendingSeek ?? video.currentTime) - 10)}
         ><Icon name="rotate-ccw" /><span
           class="pointer-events-none absolute inset-0 m-0 grid place-items-center pt-0.5 font-[Arial,sans-serif] text-[8px] text-inherit"
@@ -215,8 +217,10 @@
         id="play"
         class="relative grid size-9 flex-none cursor-pointer place-items-center rounded-full border border-solid border-transparent bg-foreground p-[7px] text-black outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:bg-white disabled:cursor-default disabled:bg-[#77777d] disabled:opacity-100 [&_svg]:size-[22px] [&_svg]:stroke-[1.7]"
         {disabled}
-        aria-label={paused ? 'Play' : 'Pause'}
-        title={`${paused ? 'Play' : 'Pause'} (Space)`}
+        aria-label={paused ? $t('preview.play') : $t('preview.pause')}
+        title={$t('preview.playbackShortcut', {
+          action: $t(paused ? 'preview.play' : 'preview.pause'),
+        })}
         aria-keyshortcuts="Space"
         onclick={togglePlayback}
       >
@@ -231,8 +235,8 @@
         id="forward"
         class="relative grid size-9 flex-none cursor-pointer place-items-center rounded-[7px] border border-solid border-transparent bg-transparent p-[7px] text-[#eee] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:bg-control disabled:cursor-default disabled:opacity-35 [&_svg]:size-[22px] [&_svg]:stroke-[1.7]"
         {disabled}
-        aria-label="Forward 10 seconds"
-        title="Forward 10 seconds"
+        aria-label={$t('preview.forward10Seconds')}
+        title={$t('preview.forward10Seconds')}
         onclick={() => seek((pendingSeek ?? video.currentTime) + 10)}
         ><Icon name="rotate-cw" /><span
           class="pointer-events-none absolute inset-0 m-0 grid place-items-center pt-0.5 font-[Arial,sans-serif] text-[8px] text-inherit"

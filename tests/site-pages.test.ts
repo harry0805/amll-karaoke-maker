@@ -5,7 +5,10 @@ let server: ViteDevServer;
 let origin: string;
 
 beforeAll(async () => {
-  server = await createServer({ server: { port: 0, open: false } });
+  server = await createServer({
+    cacheDir: 'node_modules/.vite-site-pages-tests',
+    server: { port: 0, open: false },
+  });
   await server.listen();
   const address = server.httpServer!.address();
   if (!address || typeof address === 'string') throw new Error('Expected an HTTP address');

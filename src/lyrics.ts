@@ -1,3 +1,4 @@
+import { LocalizedError } from './messages';
 import { customFontName, loadLyricFont, lyricFontCSS, setStageFontCSS } from './font-runtime';
 import { backgroundGradient } from './background-gradient';
 import { type LyricLine } from '@applemusic-like-lyrics/core';
@@ -15,7 +16,7 @@ const INTRO_FADE_MS = 250;
 export function parseLyrics(text: string): LyricLine[] {
   const xml = new DOMParser().parseFromString(text, 'application/xml');
   if (xml.querySelector('parsererror') || xml.documentElement.localName !== 'tt')
-    throw new Error('This is not a valid TTML document.');
+    throw new LocalizedError('lyrics.thisIsNotAValidTTMLDocument');
   // AMLL 1.0 requires Apple line keys, though ordinary TTML does not.
   // Add missing keys to the in-memory document so those files work too.
   const itunes = 'http://music.apple.com/lyric-ttml-internal';
@@ -33,7 +34,7 @@ export function parseLyrics(text: string): LyricLine[] {
   }
   const lines = parseTTML(new XMLSerializer().serializeToString(xml)).lines;
   if (!lines.length || !lines.some((line) => line.words.some((word) => word.word.trim())))
-    throw new Error('No timed lyrics found in this TTML.');
+    throw new LocalizedError('lyrics.noTimedLyricsFoundInThisTTML');
   for (const line of lines) {
     if (
       !Number.isFinite(line.startTime) ||
@@ -41,14 +42,14 @@ export function parseLyrics(text: string): LyricLine[] {
       line.endTime < line.startTime ||
       line.startTime < 0
     )
-      throw new Error('TTML contains invalid line timing.');
+      throw new LocalizedError('lyrics.tTMLContainsInvalidLineTiming');
     for (const word of line.words)
       if (
         !Number.isFinite(word.startTime) ||
         !Number.isFinite(word.endTime) ||
         word.endTime < word.startTime
       )
-        throw new Error('TTML contains invalid word timing.');
+        throw new LocalizedError('lyrics.tTMLContainsInvalidWordTiming');
   }
   return lines;
 }

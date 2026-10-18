@@ -1,8 +1,12 @@
 <script lang="ts">
+  import { errorMessage, type DisplayMessage } from '../messages';
+  import { t, language } from '../i18n';
+
   import { onDestroy, untrack } from 'svelte';
   import { listStoredExports, deleteStoredExport, type StoredExport } from '../export-storage';
   import Icon from './Icon.svelte';
-  let { revision, onerror }: { revision: number; onerror: (message: string) => void } = $props();
+  let { revision, onerror }: { revision: number; onerror: (message: DisplayMessage) => void } =
+    $props();
   let items = $state<(StoredExport & { url: string })[]>([]);
   let deleting = $state<string[]>([]);
   let refresh = $state(0);
@@ -29,7 +33,7 @@
           items = next;
         })
         .catch((error) => {
-          if (!cancelled) onerror(String(error));
+          if (!cancelled) onerror(errorMessage(error));
         });
     });
     return () => {
@@ -42,7 +46,7 @@
       await deleteStoredExport(id);
       refresh++;
     } catch (error) {
-      onerror(String(error));
+      onerror(errorMessage(error));
     } finally {
       deleting = deleting.filter((item) => item !== id);
     }
@@ -56,7 +60,7 @@
 <div class="mt-[30px] border-0 border-t border-solid border-divider pt-6" id="saved-area">
   <div class="flex items-center gap-2">
     <h3 class="m-0 flex items-center gap-[9px] text-[15px] font-semibold [&>svg]:text-accent-text">
-      <Icon name="hard-drive" />Saved renders
+      <Icon name="hard-drive" />{$t('savedExports.savedRenders')}
     </h3>
     <span
       class="rounded-[5px] bg-control px-1.5 py-0.5 text-[11px] text-[#b6b6bf]"
@@ -67,14 +71,14 @@
   <p
     class="mt-1.5 mb-0 text-[12px] leading-[1.5] text-muted [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
   >
-    Stored on this device. Download a render to save an MP4.
+    {$t('savedExports.storedOnThisDeviceDownloadARender')}
   </p>
   <p
     id="saved-empty"
     class="py-5 text-[13px] leading-[1.6] text-[#94949f]"
     hidden={items.length > 0}
   >
-    Your finished renders will appear here.
+    {$t('savedExports.yourFinishedRendersWillAppearHere')}
   </p>
   <div id="saved-exports">
     {#each items as item (item.id)}
@@ -86,7 +90,7 @@
             {item.name}
           </div>
           <div class="mt-[5px] text-[12px] text-muted">
-            {size(item.file.size)} · {new Date(item.createdAt).toLocaleString(undefined, {
+            {size(item.file.size)} · {new Date(item.createdAt).toLocaleString($language, {
               month: 'short',
               day: 'numeric',
               hour: '2-digit',
@@ -99,13 +103,15 @@
             class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[5px] border border-solid border-accent-border px-2.5 py-1.5 text-[12px] font-semibold text-accent-text no-underline outline-offset-[5px] hover:bg-accent-muted-hover focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
             href={item.url}
             download={item.name}
-            aria-label={`Download ${item.name}`}><Icon name="download" />Download</a
+            aria-label={$t('savedExports.downloadNamed', { name: item.name })}
+            ><Icon name="download" />{$t('savedExports.download')}</a
           >
           <button
             class="ml-auto inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border border-solid border-transparent bg-transparent px-2 py-1.5 text-[12px] text-[#a5a5b0] outline-offset-[5px] hover:bg-[#302020] hover:text-error focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:border-accent-border disabled:cursor-default disabled:opacity-35"
             disabled={deleting.includes(item.id)}
-            aria-label={`Delete saved render ${item.name}`}
-            onclick={() => remove(item.id)}><Icon name="trash-2" />Delete</button
+            aria-label={$t('savedExports.deleteNamed', { name: item.name })}
+            onclick={() => remove(item.id)}
+            ><Icon name="trash-2" />{$t('savedExports.delete')}</button
           >
         </div>
       </div>

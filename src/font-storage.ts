@@ -1,3 +1,4 @@
+import { LocalizedError } from './messages';
 const DATABASE = 'karaoke-studio-fonts';
 const STORE = 'fonts';
 const KEY = 'custom';
@@ -9,7 +10,8 @@ async function database(): Promise<IDBDatabase> {
     request.onupgradeneeded = () => request.result.createObjectStore(STORE);
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
-    request.onblocked = () => reject(new Error('Close other Karaoke Maker tabs and try again.'));
+    request.onblocked = () =>
+      reject(new LocalizedError('fontStorage.closeOtherKaraokeMakerTabsAndTry'));
   });
 }
 export async function readCustomFont(): Promise<File | undefined> {
@@ -34,7 +36,7 @@ export async function storeCustomFont(file: File | null): Promise<void> {
       else store.delete(KEY);
       transaction.oncomplete = () => resolve();
       transaction.onabort = () =>
-        reject(transaction.error ?? new Error('Could not save the custom font.'));
+        reject(transaction.error ?? new LocalizedError('fontStorage.couldNotSaveTheCustomFont'));
       transaction.onerror = () => reject(transaction.error);
     });
   } finally {

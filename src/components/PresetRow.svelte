@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t } from '../i18n';
+
   import { tick } from 'svelte';
   import type { Preset } from '../presets';
   import Icon from './Icon.svelte';
@@ -51,7 +53,7 @@
         maxlength="80"
         disabled={busy}
         style:height={`${headingHeight}px`}
-        aria-label={`New name for ${preset.name}`}
+        aria-label={$t('presetRow.newName', { name: preset.name })}
         onkeydown={(event) => {
           if (event.key === 'Enter' || event.key === 'Escape') {
             event.preventDefault();
@@ -69,8 +71,8 @@
       class="grid size-7 flex-none cursor-pointer place-items-center rounded-[7px] border-0 bg-transparent p-[5px] text-[#b5b5c0] outline-offset-[5px] hover:bg-accent-muted hover:text-accent-text focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid disabled:cursor-default disabled:opacity-35 [&>svg]:size-3.5"
       hidden={editing}
       bind:this={renameButton}
-      title="Rename preset"
-      aria-label={`Rename ${preset.name}`}
+      title={$t('presetRow.renamePreset')}
+      aria-label={$t('presetRow.rename', { name: preset.name })}
       disabled={busy}
       onclick={rename}><Icon name="pencil" /></button
     >
@@ -80,31 +82,31 @@
       <button
         class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border-0 bg-transparent px-[7px] py-[5px] text-[12px] whitespace-nowrap text-[#b5b5c0] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:bg-accent-muted enabled:hover:text-accent-text disabled:cursor-default disabled:opacity-35 max-[401px]:gap-1 max-[401px]:px-1"
         disabled={busy}
-        onclick={() => finish(true)}><Icon name="check" />Save name</button
+        onclick={() => finish(true)}><Icon name="check" />{$t('presetRow.saveName')}</button
       >
       <button
         class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border-0 bg-transparent px-[7px] py-[5px] text-[12px] whitespace-nowrap text-[#b5b5c0] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:bg-accent-muted enabled:hover:text-accent-text disabled:cursor-default disabled:opacity-35 max-[401px]:gap-1 max-[401px]:px-1"
         disabled={busy}
-        onclick={() => finish(false)}><Icon name="x" />Cancel</button
+        onclick={() => finish(false)}><Icon name="x" />{$t('presetRow.cancel')}</button
       >
     {:else}
       <button
         class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border-0 bg-transparent px-[7px] py-[5px] text-[12px] whitespace-nowrap text-[#b5b5c0] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:bg-accent-muted enabled:hover:text-accent-text disabled:cursor-default disabled:opacity-35 max-[401px]:gap-1 max-[401px]:px-1"
-        aria-label={`Update ${preset.name}`}
+        aria-label={$t('presetRow.updateNamed', { name: preset.name })}
         disabled={busy}
-        onclick={onupdate}><Icon name="save" />Update</button
+        onclick={onupdate}><Icon name="save" />{$t('presetRow.update')}</button
       >
       <button
         class="inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border-0 bg-transparent px-[7px] py-[5px] text-[12px] whitespace-nowrap text-[#b5b5c0] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:bg-accent-muted enabled:hover:text-accent-text disabled:cursor-default disabled:opacity-35 max-[401px]:gap-1 max-[401px]:px-1"
-        aria-label={`Export ${preset.name}`}
+        aria-label={$t('presetRow.exportNamed', { name: preset.name })}
         disabled={busy}
-        onclick={onexport}><Icon name="download" />Export</button
+        onclick={onexport}><Icon name="download" />{$t('presetRow.export')}</button
       >
       <button
         class="ml-auto inline-flex cursor-pointer items-center justify-center gap-[7px] rounded-[7px] border-0 bg-transparent px-[7px] py-[5px] text-[12px] whitespace-nowrap text-[#d99a97] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid enabled:hover:bg-accent-muted enabled:hover:text-accent-text disabled:cursor-default disabled:opacity-35 max-[401px]:gap-1 max-[401px]:px-1"
-        aria-label={`Delete ${preset.name}`}
+        aria-label={$t('presetRow.deleteNamed', { name: preset.name })}
         disabled={busy}
-        onclick={ondelete}><Icon name="trash-2" />Delete</button
+        onclick={ondelete}><Icon name="trash-2" />{$t('presetRow.delete')}</button
       >
     {/if}
   </div>

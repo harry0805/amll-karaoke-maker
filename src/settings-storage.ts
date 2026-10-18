@@ -1,3 +1,4 @@
+import { LocalizedError } from './messages';
 import { validateSettings, splitSettings, type PersistedSettings } from './settings';
 
 // Keep the v1 flat payload so existing browser settings remain readable.
@@ -44,7 +45,5 @@ export function persistCurrentSettings(
     }
   }
   if (failed)
-    throw new Error(
-      'Some browser storage is unavailable. Settings may not survive closing this tab.',
-    );
+    throw new LocalizedError('settingsStorage.someBrowserStorageIsUnavailableSettingsMay');
 }

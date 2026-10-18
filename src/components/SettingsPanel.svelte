@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t, translateMessage } from '../i18n';
+
   import type { StudioState } from '../studio.svelte';
   import { bundledFamilies } from '../font-catalog';
   import { fontLicenseURL } from '../font-runtime';
@@ -7,19 +9,19 @@
   import InfoPopover from './InfoPopover.svelte';
   import RangeControl from './RangeControl.svelte';
   let { studio }: { studio: StudioState } = $props();
-  const outline = (value: number) => (value ? `${value}%` : 'Off');
+  const outline = (value: number) => (value ? `${value}%` : $t('settingsPanel.off'));
   const placement = [
     {
       key: 'height',
-      label: 'Height Limit',
-      info: 'Maximum visible lyric height. 100% is unlimited; smaller values can clip part of a line.',
+      label: 'settingsPanel.heightLimit',
+      info: 'settingsPanel.heightLimitHelp',
       min: 1,
       max: 100,
     },
     {
       key: 'lineSpacing',
-      label: 'Line spacing',
-      info: 'Adjust the space between lyric rows.',
+      label: 'settingsPanel.lineSpacing',
+      info: 'settingsPanel.lineSpacingHelp',
       min: 0.5,
       max: 1.5,
       step: 0.05,
@@ -27,23 +29,23 @@
     },
     {
       key: 'bottom',
-      label: 'Bottom margin',
-      info: 'Distance between the lyrics and the bottom of the video.',
+      label: 'settingsPanel.bottomMargin',
+      info: 'settingsPanel.bottomMarginHelp',
       min: 0,
       max: 80,
     },
     {
       key: 'horizontalMargin',
-      label: 'Horizontal margin',
-      info: 'Space reserved on each side of the lyrics.',
+      label: 'settingsPanel.horizontalMargin',
+      info: 'settingsPanel.horizontalMarginHelp',
       min: 0,
       max: 40,
     },
   ] as const;
   const background = [
-    { key: 'shade', label: 'Background opacity', id: 'shade-control' },
-    { key: 'shadeHeight', label: 'Shade height', id: 'shadeHeight' },
-    { key: 'shadeFadeStart', label: 'Fade begins', id: 'shadeFadeStart' },
+    { key: 'shade', label: 'settingsPanel.backgroundOpacity', id: 'shade-control' },
+    { key: 'shadeHeight', label: 'settingsPanel.shadeHeight', id: 'shadeHeight' },
+    { key: 'shadeFadeStart', label: 'settingsPanel.fadeBegins', id: 'shadeFadeStart' },
   ] as const;
 </script>
 
@@ -53,12 +55,12 @@
   <h2
     class="mt-0 mb-[17px] flex items-center gap-[9px] text-[16px] font-semibold [&>svg]:text-accent-text"
   >
-    <Icon name="palette" />Lyric style
+    <Icon name="palette" />{$t('settingsPanel.lyricStyle')}
   </h2>
   <RangeControl
     id="fontSize"
-    label="Text size"
-    info="Text size as a percentage of the video height."
+    label={$t('settingsPanel.textSize')}
+    info={$t('settingsPanel.textSizeAsAPercentageOfThe')}
     value={studio.presetSettings.fontSize}
     min={1}
     max={15}
@@ -67,7 +69,7 @@
     onchange={(value) => studio.updatePresetSetting('fontSize', value)}
   />
   <label class="block text-[14px]"
-    >Font<select
+    >{$t('settingsPanel.font')}<select
       class="mt-2 block w-full rounded-md border border-solid border-[#39393f] bg-field p-2.5 text-[#eee] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
       id="font"
       value={studio.presetSettings.font}
@@ -75,17 +77,18 @@
       onchange={(event) =>
         studio.updatePresetSetting('font', event.currentTarget.value as PresetSettings['font'])}
     >
-      <optgroup label="Bundled fonts"
+      <optgroup label={$t('settingsPanel.bundledFonts')}
         ><option value="nunito">Nunito</option><option value="inter">Inter</option><option
           value="robotoCondensed">Roboto Condensed</option
         ><option value="notoSerif">Noto Serif</option></optgroup
       >
-      <option value="custom">Custom font</option>
-      <optgroup id="device-fonts" label="Device fonts"
+      <option value="custom">{$t('settingsPanel.customFont')}</option>
+      <optgroup id="device-fonts" label={$t('settingsPanel.deviceFonts')}
         >{#each studio.session.deviceFonts as font}<option
             value={font.key}
             disabled={!font.available}
-            hidden={!font.available}>{font.name}{font.available ? '' : ' (device fallback)'}</option
+            hidden={!font.available}
+            >{font.name}{font.available ? '' : $t('settingsPanel.deviceFallback')}</option
           >{/each}</optgroup
       >
     </select></label
@@ -100,14 +103,16 @@
       id="font-licenses"
       href={fontLicenseURL}
       target="_blank"
-      rel="noopener noreferrer">Bundled font licenses</a
+      rel="noopener noreferrer">{$t('settingsPanel.bundledFontLicenses')}</a
     >
   </p>
   <div class="mt-3.5" id="custom-font-controls" hidden={studio.presetSettings.font !== 'custom'}>
     <label
       class="relative mb-2.5 block cursor-pointer rounded-lg border border-solid border-[#36363d] bg-panel p-3.5 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-accent focus-within:outline-solid hover:border-accent-border"
       ><span class="flex items-center gap-2.5 text-[12px] text-muted [&>svg]:text-accent-text"
-        ><strong class="text-[14px] font-medium text-foreground">Custom font</strong></span
+        ><strong class="text-[14px] font-medium text-foreground"
+          >{$t('settingsPanel.customFont')}</strong
+        ></span
       ><input
         class="absolute inset-0 h-full w-full cursor-pointer opacity-0 outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
         id="custom-font-file"
@@ -120,7 +125,7 @@
           if (file) void studio.changeCustomFont(file);
         }}
       /><span class="mt-[9px] block truncate text-[14px] text-[#ababba]" id="custom-font-name"
-        >{studio.session.customName || 'Choose font'}</span
+        >{studio.session.customName || $t('settingsPanel.chooseFont')}</span
       ></label
     >
     <button
@@ -128,12 +133,12 @@
       id="custom-font-remove"
       hidden={!studio.session.customName}
       disabled={studio.session.exporting || studio.session.fontUploadBusy}
-      onclick={() => studio.changeCustomFont()}>Remove font</button
+      onclick={() => studio.changeCustomFont()}>{$t('settingsPanel.removeFont')}</button
     >
     <p
       class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
     >
-      TTF, OTF, WOFF, or WOFF2, up to 32 MB. Font files are not included in presets.
+      {$t('settingsPanel.tTFOTFWOFFOrWOFF2UpTo')}
     </p>
   </div>
   <p
@@ -141,14 +146,16 @@
     class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted empty:hidden [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
     role="status"
   >
-    {studio.session.fontError ||
-      (studio.session.fontLoading || studio.session.fontUploadBusy ? 'Loading font…' : '')}
+    {$translateMessage(studio.session.fontError) ||
+      (studio.session.fontLoading || studio.session.fontUploadBusy
+        ? $t('settingsPanel.loadingFont')
+        : '')}
   </p>
   <div class="mt-5 border-0 border-t border-solid border-[#303037] pt-4">
-    <h3 class="m-0 text-[14px] font-medium">Colors and outline</h3>
+    <h3 class="m-0 text-[14px] font-medium">{$t('settingsPanel.colorsAndOutline')}</h3>
     <div class="mt-4 flex gap-[18px]">
       <label class="flex-1 text-[14px]"
-        >Text color<input
+        >{$t('settingsPanel.textColor')}<input
           class="mt-2 block h-[38px] w-full cursor-pointer rounded-md border border-solid border-[#39393f] bg-field p-[3px] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
           id="textColor"
           type="color"
@@ -157,7 +164,7 @@
           oninput={(event) => studio.updatePresetSetting('textColor', event.currentTarget.value)}
         /></label
       ><label class="flex-1 text-[14px]"
-        >Outline color<input
+        >{$t('settingsPanel.outlineColor')}<input
           class="mt-2 block h-[38px] w-full cursor-pointer rounded-md border border-solid border-[#39393f] bg-field p-[3px] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
           id="outlineColor"
           type="color"
@@ -169,7 +176,7 @@
     </div>
     <RangeControl
       id="outlineWidth"
-      label="Outline thickness"
+      label={$t('settingsPanel.outlineThickness')}
       value={studio.presetSettings.outlineWidth}
       min={0}
       max={12}
@@ -180,7 +187,7 @@
     <p
       class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
     >
-      Set outline thickness to 0 to turn it off.
+      {$t('settingsPanel.setOutlineThicknessTo0ToTurn')}
     </p>
   </div>
   <label class="mt-4 flex cursor-pointer items-center gap-2 text-[14px]"
@@ -192,17 +199,18 @@
       checked={studio.presetSettings.useDuetColors}
       disabled={studio.session.exporting}
       onchange={(event) => studio.updatePresetSetting('useDuetColors', event.currentTarget.checked)}
-    /> Use different settings for duet</label
+    />
+    {$t('settingsPanel.useDifferentSettingsForDuet')}</label
   >
   <div
     id="duet-style"
     class="mt-5 border-0 border-t border-solid border-[#303037] pt-4"
     hidden={!studio.presetSettings.useDuetColors}
   >
-    <h3 class="m-0 text-[14px] font-medium">Duet colors and outline</h3>
+    <h3 class="m-0 text-[14px] font-medium">{$t('settingsPanel.duetColorsAndOutline')}</h3>
     <div class="mt-4 flex gap-[18px]">
       <label class="flex-1 text-[14px]"
-        >Duet text color<input
+        >{$t('settingsPanel.duetTextColor')}<input
           class="mt-2 block h-[38px] w-full cursor-pointer rounded-md border border-solid border-[#39393f] bg-field p-[3px] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
           id="duetColor"
           type="color"
@@ -211,7 +219,7 @@
           oninput={(event) => studio.updatePresetSetting('duetColor', event.currentTarget.value)}
         /></label
       ><label class="flex-1 text-[14px]"
-        >Duet outline color<input
+        >{$t('settingsPanel.duetOutlineColor')}<input
           class="mt-2 block h-[38px] w-full cursor-pointer rounded-md border border-solid border-[#39393f] bg-field p-[3px] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
           id="duetOutlineColor"
           type="color"
@@ -224,7 +232,7 @@
     </div>
     <RangeControl
       id="duetOutlineWidth"
-      label="Duet outline thickness"
+      label={$t('settingsPanel.duetOutlineThickness')}
       value={studio.presetSettings.duetOutlineWidth}
       min={0}
       max={12}
@@ -240,16 +248,16 @@
   <h2
     class="mt-0 mb-[17px] flex items-center gap-[9px] text-[16px] font-semibold [&>svg]:text-accent-text"
   >
-    <Icon name="move" />Lyric placement
+    <Icon name="move" />{$t('settingsPanel.lyricPlacement')}
   </h2>
   <RangeControl
     id="visibleLines"
-    label="Visible lines"
-    info="The target amount of lines that will appear at the same time, active lines (lines currently being sung) is always shown regardless of this limit."
+    label={$t('settingsPanel.visibleLines')}
+    info={$t('settingsPanel.theTargetAmountOfLinesThatWill')}
     min={1}
     max={11}
     value={studio.presetSettings.visibleLines || 11}
-    format={(value) => (value === 11 ? 'Unlimited' : String(value))}
+    format={(value) => (value === 11 ? $t('settingsPanel.unlimited') : String(value))}
     disabled={studio.session.exporting}
     onchange={(value) => studio.updatePresetSetting('visibleLines', value === 11 ? 0 : value)}
   />
@@ -264,10 +272,10 @@
         onchange={(event) =>
           studio.updatePresetSetting('keepScrollNearEnd', event.currentTarget.checked)}
       />
-      Keep scroll near end
+      {$t('settingsPanel.keepScrollNearEnd')}
     </label><InfoPopover
-      label="Keep scroll near end"
-      text="This keeps the top most line always aligned at the same height at the end."
+      label={$t('settingsPanel.keepScrollNearEnd')}
+      text={$t('settingsPanel.thisKeepsTheTopMostLineAlways')}
     />
   </div>
 
@@ -275,9 +283,11 @@
     <RangeControl
       id={control.key}
       {...control}
+      label={$t(control.label)}
+      info={$t(control.info)}
       format={(value) =>
         control.key === 'height' && value === 100
-          ? 'Unlimited'
+          ? $t('settingsPanel.unlimited')
           : control.key === 'lineSpacing'
             ? control.format(value)
             : `${value}%`}
@@ -290,10 +300,10 @@
 <section
   class="mb-6 border-0 border-b border-solid border-divider pb-6 last:mb-0 last:border-0 last:pb-0"
 >
-  <h2 class="mt-0 mb-[17px] text-[16px] font-semibold">Background</h2>
+  <h2 class="mt-0 mb-[17px] text-[16px] font-semibold">{$t('settingsPanel.background')}</h2>
   <div class="mt-4 flex gap-[18px]">
     <label class="flex-1 text-[14px]"
-      >Background color<input
+      >{$t('settingsPanel.backgroundColor')}<input
         class="mt-2 block h-[38px] w-full cursor-pointer rounded-md border border-solid border-[#39393f] bg-field p-[3px] outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
         id="backgroundColor"
         type="color"
@@ -308,7 +318,7 @@
     <RangeControl
       id={control.id}
       outputId={`${control.key}-value`}
-      label={control.label}
+      label={$t(control.label)}
       min={0}
       max={100}
       value={studio.presetSettings[control.key]}
@@ -323,5 +333,5 @@
   role="alert"
   hidden={!studio.session.errors.settings}
 >
-  {studio.session.errors.settings}
+  {$translateMessage(studio.session.errors.settings)}
 </p>

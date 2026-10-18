@@ -1,3 +1,4 @@
+import { LocalizedError } from './messages';
 // OPFS contains completed MP4s and small completion records. A per-export Web
 // Lock prevents another tab's startup cleanup from deleting a live render.
 const DIRECTORY = 'karaoke-exports-v1';
@@ -12,9 +13,7 @@ export interface StoredExport {
 
 async function directory(create = true) {
   if (!navigator.storage?.getDirectory || !navigator.locks) {
-    throw new Error(
-      'Saving renders needs OPFS and Web Locks. Use a recent browser over HTTPS or localhost. No in-memory fallback is used.',
-    );
+    throw new LocalizedError('exportStorage.savingRendersNeedsOPFSAndWebLocks');
   }
   return (await navigator.storage.getDirectory()).getDirectoryHandle(DIRECTORY, { create });
 }
@@ -41,9 +40,7 @@ export async function writeStoredExport(
     try {
       const handle = await dir.getFileHandle(id + '.mp4', { create: true });
       if (!handle.createWritable)
-        throw new Error(
-          'This browser cannot save renders to browser storage. Try a recent Chrome, Edge, or Firefox.',
-        );
+        throw new LocalizedError('exportStorage.thisBrowserCannotSaveRendersToBrowser');
       stream = await handle.createWritable();
       await write(stream); // The encoder finalizes and closes this stream.
       signal.throwIfAborted();
@@ -65,10 +62,7 @@ export async function writeStoredExport(
       await stream?.abort().catch(() => {});
       await removeFiles(dir, id);
       if (error instanceof DOMException && error.name === 'QuotaExceededError') {
-        throw new Error(
-          'Browser storage is full. Delete saved renders or free disk space, then try again. The partial render was removed.',
-          { cause: error },
-        );
+        throw new LocalizedError('exportStorage.storageFull', undefined, { cause: error });
       }
       throw error;
     }
@@ -119,9 +113,9 @@ export async function listStoredExports(): Promise<StoredExport[]> {
 }
 
 export async function deleteStoredExport(id: string) {
-  if (!validId.test(id)) throw new Error('Invalid render ID');
+  if (!validId.test(id)) throw new LocalizedError('exportStorage.invalidRenderID');
   await navigator.locks.request(lockName(id), { ifAvailable: true }, async (lock) => {
-    if (!lock) throw new Error('This render is still being written in another tab.');
+    if (!lock) throw new LocalizedError('exportStorage.thisRenderIsStillBeingWrittenIn');
     await removeFiles(await directory(false), id);
   });
 }

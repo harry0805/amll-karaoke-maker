@@ -1,17 +1,16 @@
+import { message, type DisplayMessage } from './messages';
 import { ALL_FORMATS, BlobSource, Input, canEncodeVideo } from 'mediabunny';
 
 // Inspect codecs and browser capabilities without decoding the full movie or
 // creating an output file. Rendering still validates the actual conversion.
-export async function checkExportCompatibility(file: Blob): Promise<string[]> {
-  const warnings: string[] = [];
+export async function checkExportCompatibility(file: Blob): Promise<DisplayMessage[]> {
+  const warnings: DisplayMessage[] = [];
   if (
     !isSecureContext ||
     typeof VideoEncoder === 'undefined' ||
     typeof VideoDecoder === 'undefined'
   ) {
-    warnings.push(
-      'This browser does not support the WebCodecs rendering APIs here. Try this site over HTTPS or localhost in a browser with WebCodecs support.',
-    );
+    warnings.push(message('compatibility.webCodecs'));
   }
   const input = new Input({
     source: new BlobSource(file, { maxCacheSize: 8 * 1024 ** 2 }),
@@ -19,26 +18,19 @@ export async function checkExportCompatibility(file: Blob): Promise<string[]> {
   });
   try {
     const track = await input.getPrimaryVideoTrack();
-    if (!track) warnings.push('No supported video track was found. Try an H.264 MP4.');
+    if (!track) warnings.push(message('compatibility.noVideoTrack'));
     else {
-      if (!(await track.canDecode()))
-        warnings.push('This browser cannot decode this video for rendering. Try an H.264 MP4.');
+      if (!(await track.canDecode())) warnings.push(message('compatibility.cannotDecode'));
       const width = Math.ceil((await track.getDisplayWidth()) / 2) * 2;
       const height = Math.ceil((await track.getDisplayHeight()) / 2) * 2;
       if (!(await canEncodeVideo('avc', { width, height })))
-        warnings.push(
-          `This browser cannot encode H.264 at the source resolution of ${width} × ${height}. Try another browser or a smaller source video.`,
-        );
+        warnings.push(message('compatibility.cannotEncode', { width, height }));
     }
     const audio = await input.getPrimaryAudioTrack();
     if (audio && (await audio.getCodec()) !== 'aac')
-      warnings.push(
-        'The source audio is not AAC. Rendering currently supports AAC audio or silent video. Convert the audio to AAC before rendering.',
-      );
+      warnings.push(message('compatibility.audioUnsupported'));
   } catch {
-    warnings.push(
-      'Render compatibility could not be verified. The file may use an unsupported format or contain damaged media. Try an H.264 MP4 with AAC audio.',
-    );
+    warnings.push(message('compatibility.unverified'));
   } finally {
     input.dispose();
   }

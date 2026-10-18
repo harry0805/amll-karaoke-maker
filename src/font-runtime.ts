@@ -1,3 +1,4 @@
+import { LocalizedError } from './messages';
 import { getFontEmbedCSS } from 'html-to-image';
 export const fontLicenseURL = new URL('fonts/licenses.txt', document.baseURI).href;
 import { bundledFamilies, validateFontFile, type FontKey } from './font-catalog';
@@ -17,15 +18,16 @@ function dataURL(blob: Blob): Promise<string> {
 }
 async function decodeCustom(file: File) {
   if (!(file instanceof Blob) || typeof file.name !== 'string')
-    throw new Error('The saved font is invalid. Upload it again.');
-  if (file.size > 32 * 1024 * 1024) throw new Error('Choose a font no larger than 32 MB.');
+    throw new LocalizedError('fontRuntime.theSavedFontIsInvalidUploadIt');
+  if (file.size > 32 * 1024 * 1024)
+    throw new LocalizedError('fontRuntime.chooseAFontNoLargerThan32');
   const bytes = await file.arrayBuffer();
   validateFontFile(file.name, bytes);
   const face = new FontFace('Karaoke Custom Font', bytes, { weight: '100 900', style: 'normal' });
   try {
     await face.load();
   } catch {
-    throw new Error('This font could not be loaded. Choose a valid TTF, OTF, WOFF, or WOFF2 file.');
+    throw new LocalizedError('fontRuntime.thisFontCouldNotBeLoadedChoose');
   }
   const uri = await dataURL(new Blob([bytes]));
   return {
@@ -62,7 +64,7 @@ export async function removeCustomFont() {
 }
 export function requireCustomFont(font: FontKey) {
   if (font === 'custom' && !custom)
-    throw new Error('Upload a custom font in Settings or choose another font before rendering.');
+    throw new LocalizedError('fontRuntime.uploadACustomFontInSettingsOr');
 }
 const fontStyles = new Map<FontKey, Promise<void>>();
 async function loadFontStyles(font: FontKey, family: string) {
@@ -78,7 +80,7 @@ async function loadFontStyles(font: FontKey, family: string) {
       link.onload = () => resolve();
       link.onerror = () => {
         link.remove();
-        reject(new Error('Could not load font styles. Try selecting the font again.'));
+        reject(new LocalizedError('fontRuntime.couldNotLoadFontStylesTrySelecting'));
       };
       document.head.append(link);
     });
@@ -94,9 +96,9 @@ export async function loadLyricFont(font: FontKey, text: string) {
   await loadFontStyles(font, family);
   const faces = await document.fonts.load(`750 16px "${family}"`, text || 'Lyrics');
   if (!faces.length)
-    throw new Error(
-      `Could not load ${family.replace(' Variable', '')}. Reload the page and try again.`,
-    );
+    throw new LocalizedError('fontRuntime.couldNotLoadValue1ReloadThePage', {
+      value1: family.replace(' Variable', ''),
+    });
 }
 
 /** Cache the library's embedded font CSS for reuse across rendered frames. */

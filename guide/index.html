@@ -30,76 +30,86 @@
   </head>
   <body class="guide-page">
     <main class="site-content">
-      <nav aria-label="Main"><a href="/">Karaoke Maker</a></nav>
-      <h1>How to turn TTML lyrics into a karaoke MP4</h1>
-      <p>
+      <nav aria-label="Main" data-i18n-aria-label="guide.mainNavigation">
+        <a href="/">Karaoke Maker</a>
+        <div id="guide-language"></div>
+      </nav>
+      <h1 data-i18n="guide.heading">How to turn TTML lyrics into a karaoke MP4</h1>
+      <p data-i18n="guide.introduction">
         You need a source video and a TTML lyrics file with timing. Karaoke Maker combines them into
         an MP4 with animated lyrics. TTML contains text and timing, so it cannot produce a music
         video on its own.
       </p>
-      <p>
+      <p data-i18n="guide.privacy">
         Karaoke Maker uses Apple Music-like Lyrics, or AMLL, for scrolling lyrics and word-by-word
         highlighting when your file includes word timing. Your video and lyrics stay on your device
         throughout editing and export.
       </p>
-      <h2>Supported browsers</h2>
-      <p>
+      <h2 data-i18n="guide.browsersHeading">Supported browsers</h2>
+      <p data-i18n="guide.browsers">
         Use a recent Chromium-based browser, such as Chrome or Edge, or Firefox. Safari and other
         browsers are not supported, this includes most iOS browsers in the App Store because Apple
         requires them to use Web-Kit(Safari) engine. Using unsupported browsers may cause errors,
         previews and rendering may be inaccurate or fail entirely.
       </p>
-      <h2>1. Prepare your timed lyrics</h2>
-      <p>
-        Create or edit your TTML file in <a href="https://tool.amll.dev/">AMLL TTML Tool</a>. Check
-        that the lyrics match your recording. Line timing controls when each line appears; word
-        timing enables word-by-word highlighting. Karaoke Maker reads the timing you supply and does
-        not transcribe audio or automatically align words.
+      <h2 data-i18n="guide.lyricsHeading">1. Prepare your timed lyrics</h2>
+      <p data-i18n="guide.lyrics">
+        Create or edit your TTML file in
+        <a data-i18n-link href="https://tool.amll.dev/">AMLL TTML Tool</a>. Check that the lyrics
+        match your recording. Line timing controls when each line appears; word timing enables
+        word-by-word highlighting. Karaoke Maker reads the timing you supply and does not transcribe
+        audio or automatically align words.
       </p>
-      <h2>2. Choose your video and TTML file</h2>
-      <p>
-        <a href="/">Open Karaoke Maker</a> and choose both files in Source. Files stay on your
-        device. If the editor reports a compatibility issue, read the warning before continuing.
-        Browser codec support affects which videos can render.
+      <h2 data-i18n="guide.filesHeading">2. Choose your video and TTML file</h2>
+      <p data-i18n="guide.files">
+        <a data-i18n-link data-i18n="guide.openApp" href="/">Open Karaoke Maker</a> and choose both
+        files in Source. Files stay on your device. If the editor reports a compatibility issue,
+        read the warning before continuing. Browser codec support affects which videos can render.
       </p>
-      <h2>3. Check the timing</h2>
-      <p>
+      <h2 data-i18n="guide.timingHeading">3. Check the timing</h2>
+      <p data-i18n="guide.timing">
         Play the preview and compare the highlighted lyrics with the vocals. Use Timing offset to
         shift the lyrics. Positive values make lyrics appear later. If the timing drifts during the
         song, check the timestamps in the TTML file and confirm that it matches this version of the
         recording.
       </p>
-      <h2>4. Style the lyrics</h2>
-      <p>
+      <h2 data-i18n="guide.styleHeading">4. Style the lyrics</h2>
+      <p data-i18n="guide.style">
         In Settings, adjust the font, size, colors, outlines, spacing, and placement. Use the
         background shade to keep text readable over bright scenes. Save a preset if you want to
         reuse these settings.
       </p>
-      <p>
+      <p data-i18n="guide.layout">
         Visible lines defaults to two. Each primary or duet line counts together with its background
         vocals, and stays active while either is singing. Active lines can exceed the line limit.
         The Visible lines slider offers 1 to 10 lines, then Unlimited. Height Limit defaults to
         Unlimited at 100% and strictly clips lyrics at smaller heights, even within a line. Enable
         Keep scroll near end to keep the last lyrics at the top of the line window.
       </p>
-      <h2>5. Render and download the MP4</h2>
-      <p>
+      <h2 data-i18n="guide.renderHeading">5. Render and download the MP4</h2>
+      <p data-i18n="guide.render">
         Choose Render MP4 and keep the tab open until the export finishes. Download the result from
-        Saved exports. Watch the downloaded video to check the timing and appearance.
+        Saved renders. Watch the downloaded video to check the timing and appearance.
       </p>
-      <h2>Does this remove vocals?</h2>
-      <p>
+      <h2 data-i18n="guide.vocalsHeading">Does this remove vocals?</h2>
+      <p data-i18n="guide.vocals">
         No. Karaoke Maker adds lyrics to your source video. If you want an instrumental soundtrack,
         prepare a video with that audio before importing it.
       </p>
-      <h2>What if rendering fails?</h2>
-      <p>
+      <h2 data-i18n="guide.failureHeading">What if rendering fails?</h2>
+      <p data-i18n="guide.failure">
         Check the compatibility message and the error shown by the editor. Export depends on the
         browser, device, and source codecs. For help,
-        <a href="https://github.com/harry0805/amll-karaoke-maker/issues">open a GitHub issue</a>
+        <a
+          data-i18n-link
+          data-i18n="guide.reportIssue"
+          href="https://github.com/harry0805/amll-karaoke-maker/issues"
+          >open a GitHub issue</a
+        >
         with your browser details and the error message.
       </p>
-      <p><a href="/">Make a karaoke video</a></p>
+      <p><a data-i18n="guide.makeVideo" href="/">Make a karaoke video</a></p>
     </main>
+    <script type="module" src="/src/guide.ts"></script>
   </body>
 </html>

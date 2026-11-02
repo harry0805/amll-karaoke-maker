@@ -1,3 +1,4 @@
+import { randomUUID } from './uuid';
 import { LocalizedError } from './messages';
 // OPFS contains completed MP4s and small completion records. A per-export Web
 // Lock prevents another tab's startup cleanup from deleting a live render.
@@ -34,7 +35,7 @@ export async function writeStoredExport(
 ): Promise<StoredExport> {
   signal.throwIfAborted();
   const dir = await directory();
-  const id = crypto.randomUUID();
+  const id = randomUUID();
   return navigator.locks.request(lockName(id), { signal }, async () => {
     let stream: FileSystemWritableFileStream | undefined;
     try {

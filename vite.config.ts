@@ -19,7 +19,7 @@ export default defineConfig({
       },
     },
   ],
-  server: { host: '127.0.0.1', port: Number(process.env.PORT || 3000), strictPort: true },
+  server: { host: '0.0.0.0', port: Number(process.env.PORT || 3000), strictPort: true },
   build: {
     outDir: 'dist',
     rollupOptions: {

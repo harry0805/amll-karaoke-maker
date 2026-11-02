@@ -20,12 +20,14 @@ import {
   requireCustomFont,
 } from './font-runtime';
 import { detectDeviceFonts } from './device-fonts';
+import type { LyricSource } from './lrc-red';
 
 /** Temporary in-memory values. Never written to sessionStorage. */
 export class SessionState {
   // Runtime state belongs to this mounted studio and is never serialized as settings.
   videoFile = $state<File>();
   ttmlFile = $state<File>();
+  lyricSource = $state<LyricSource>();
   ttmlName = $state<DisplayMessage>(message('studio.chooseTTML'));
   lyricsInfo = $state<DisplayMessage>(message('studio.wordTimingHelp'));
   loaded = $state(false);
@@ -209,6 +211,26 @@ export class StudioState {
     }
   }
 
+  clearVideo() {
+    if (this.session.exporting) return;
+    this.video?.pause();
+    this.session.videoFile = undefined;
+    this.session.loaded = false;
+    this.session.videoError = false;
+    this.session.compatibilityWarnings = [];
+    this.session.compatibilityChecking = false;
+    this.session.compatibilityAccepted = false;
+    this.compatibility = Promise.resolve();
+    if (this.video) {
+      this.video.removeAttribute('src');
+      this.video.load();
+    }
+    if (this.objectURL) URL.revokeObjectURL(this.objectURL);
+    this.objectURL = '';
+    this.session.errors.source = '';
+    this.requestSeekFrame();
+  }
+
   loadVideo(file?: File) {
     if (!file || !this.video || this.session.exporting) return;
     this.video.pause();
@@ -240,8 +262,20 @@ export class StudioState {
       : 'ready';
   }
 
-  async loadTTML(file?: File) {
-    if (!file || !this.lyrics || this.session.exporting) return;
+  clearTTML() {
+    if (this.session.exporting) return;
+    this.lyricGeneration++;
+    this.lyrics?.clear();
+    this.session.ttmlFile = undefined;
+    this.session.lyricSource = undefined;
+    this.session.ttmlName = message('studio.chooseTTML');
+    this.session.lyricsInfo = message('studio.wordTimingHelp');
+    this.session.errors.source = '';
+    this.requestSeekFrame();
+  }
+
+  async loadTTML(file?: File, source?: LyricSource): Promise<boolean> {
+    if (!file || !this.lyrics || this.session.exporting) return false;
     const generation = ++this.lyricGeneration;
     this.session.ttmlFile = undefined;
     this.session.errors.source = '';
@@ -249,11 +283,12 @@ export class StudioState {
       if (file.size > 10 * 1024 ** 2)
         throw new LocalizedError('studio.tTMLFileMustBeSmallerThan10');
       const text = await file.text();
-      if (generation !== this.lyricGeneration) return;
+      if (generation !== this.lyricGeneration) return false;
       const lines = await this.lyrics.load(text);
-      if (generation !== this.lyricGeneration) return;
+      if (generation !== this.lyricGeneration) return false;
       this.session.ttmlFile = file;
       this.session.ttmlName = file.name;
+      this.session.lyricSource = source;
       this.session.lyricsInfo = message(
         lines.some((line) => line.words.length > 1)
           ? 'studio.wordTimedLines'
@@ -261,11 +296,13 @@ export class StudioState {
         { count: lines.length },
       );
       await this.frame(0, true);
+      return true;
     } catch (error) {
       if (generation === this.lyricGeneration) {
         this.session.ttmlName = message('studio.chooseAnotherTTML');
         this.session.errors.source = errorMessage(error);
       }
+      return false;
     }
   }
 

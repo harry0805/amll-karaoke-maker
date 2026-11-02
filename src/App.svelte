@@ -214,7 +214,7 @@
         </div>
       </div>
     </aside>
-    <StudioFooter />
+    <StudioFooter source={studio.session.lyricSource} />
   </div>
 </main>
 <dialog

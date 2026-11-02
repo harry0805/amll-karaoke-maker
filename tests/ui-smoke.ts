@@ -224,6 +224,27 @@ try {
   await page.waitForFunction(
     () => !(document.querySelector('#play') as HTMLButtonElement).disabled,
   );
+  const selectedStyles = await page.evaluate(() => {
+    const video = document.getElementById('selected-video')!;
+    const lyrics = document.getElementById('selected-lyrics')!;
+    return [video, lyrics].map((element) => ({
+      height: element.getBoundingClientRect().height,
+      background: getComputedStyle(element).backgroundColor,
+    }));
+  });
+  assert.deepEqual(selectedStyles[0], selectedStyles[1]);
+  assert.equal(selectedStyles[0]!.background, 'rgb(27, 27, 32)');
+  await page.locator('#remove-video').click();
+  await text(page, 'video-name', 'Choose video');
+  await text(page, 'media-info', 'No video selected');
+  await text(page, 'time', '0:00 / 0:00');
+  await text(page, 'ttml-name', 'lyrics.ttml');
+  assert.equal(await page.locator('#play').isEnabled(), false);
+  assert.equal(await page.locator('#export').isEnabled(), false);
+  await page.locator('#video-file').setInputFiles(source);
+  await page.waitForFunction(
+    () => !(document.querySelector('#play') as HTMLButtonElement).disabled,
+  );
   await page.locator('#play').click();
   await page.waitForFunction(() => !(document.querySelector('#video') as HTMLVideoElement).paused);
   await page.locator('#play').click();

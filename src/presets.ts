@@ -1,3 +1,4 @@
+import { randomUUID } from './uuid';
 import { LocalizedError } from './messages';
 import { defaults, pickPresetSettings, validateSettings, type PresetSettings } from './settings';
 
@@ -53,7 +54,7 @@ export function parsePresets(text: string): Preset[] {
       throw new LocalizedError('presets.eachPresetNeedsANameAndSettings');
     const preset = entry as { name?: unknown; settings?: unknown };
     return {
-      id: crypto.randomUUID(),
+      id: randomUUID(),
       name: presetName(preset.name),
       settings: validatePresetSettings(preset.settings),
     };
@@ -67,7 +68,7 @@ export function mergePresets(existing: Preset[], incoming: Preset[]): Preset[] {
     ...existing,
     ...incoming.map((p) => {
       let id = p.id;
-      while (ids.has(id)) id = crypto.randomUUID();
+      while (ids.has(id)) id = randomUUID();
       ids.add(id);
       return { ...p, id };
     }),

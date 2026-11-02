@@ -1,6 +1,8 @@
 <script lang="ts">
   import { t } from '../i18n';
   import LinkedText from './LinkedText.svelte';
+  import type { LyricSource } from '../lrc-red';
+  let { source }: { source?: LyricSource } = $props();
 </script>
 
 <footer
@@ -16,7 +18,20 @@
           rel="noopener noreferrer">AMLL</a
         >{/snippet}</LinkedText
     ></span
-  ><span class="ml-auto max-studio:ml-0"
+  >
+  {#if source}
+    <span
+      ><LinkedText messageKey="lyricSearch.lyricsFrom"
+        >{#snippet link()}<a
+            href={source.url}
+            title={source.title}
+            target="_blank"
+            rel="noopener noreferrer">lrc.red</a
+          >{/snippet}</LinkedText
+      ></span
+    >
+  {/if}
+  <span class="ml-auto max-studio:ml-0"
     ><LinkedText messageKey="studioFooter.reportIssue"
       >{#snippet link()}<a
           class="cursor-pointer outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"

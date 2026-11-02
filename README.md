@@ -20,12 +20,14 @@ Everything runs on your device. There is no video upload or video editor to inst
 Use a recent Chromium-based browser, such as Chrome or Edge, or Firefox. Safari and other browsers that do not use Chromium or Firefox's Gecko engine are not supported. The app shows a warning in unsupported browsers because preview and video rendering may have issues. Export also depends on your browser's codec support.
 
 1. [Open the app](https://karaoke.hproject.xyz) and choose your video.
-2. Choose a TTML lyrics file. TTML is a lyrics file that tells when each line or word is being sung.
+2. In Lyrics, **Search lyrics** by song title or artist, then **Use TTML**, or **Upload lyrics** from your device. TTML tells when each line or word is being sung.
 3. Play it and adjust the style in the settings panel.
 4. Click **Render MP4** and let the magic happen.
 5. Download your video from **Saved exports**.
 
-Need a lyrics file? Use [AMLL TTML Tool](https://tool.amll.dev/) to create or edit one, then bring it here. Karaoke Maker uses the timing you provide; it does not transcribe songs or automatically time the words.
+Lyric search is powered by [lrc.red](https://lrc.red). Search results link to each song's source page, and downloaded TTML is validated before selection. Your search is sent to lrc.red; your video stays on your device. Check that the recording and timing match your video.
+
+You can also use [AMLL TTML Tool](https://tool.amll.dev/) to create or edit a lyrics file, then bring it here. Karaoke Maker uses the timing you provide; it does not transcribe songs or automatically time the words.
 
 ## Help improve Karaoke Maker
 
@@ -35,4 +37,4 @@ Code and documentation contributions are welcome. See the [contribution guide](d
 
 ## Credits
 
-Lyrics are rendered with [Apple Music-like Lyrics](https://github.com/amll-dev/applemusic-like-lyrics). Bundled fonts include their [licenses](public/fonts/README.md). Dependency licensing notes are in the [contribution guide](docs/CONTRIBUTING.md#dependency-licenses).
+Lyric search and retrieved lyrics are provided by [lrc.red](https://lrc.red), following its [API terms](https://lrc.red/api). Lyrics are rendered with [Apple Music-like Lyrics](https://github.com/amll-dev/applemusic-like-lyrics). Bundled fonts include their [licenses](public/fonts/README.md). Dependency licensing notes are in the [contribution guide](docs/CONTRIBUTING.md#dependency-licenses).

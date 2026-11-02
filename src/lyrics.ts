@@ -1,3 +1,4 @@
+import { randomUUID } from './uuid';
 import { LocalizedError } from './messages';
 import { customFontName, loadLyricFont, lyricFontCSS, setStageFontCSS } from './font-runtime';
 import { backgroundGradient } from './background-gradient';
@@ -33,7 +34,14 @@ export function parseLyrics(text: string): LyricLine[] {
     paragraph.setAttributeNS(itunes, 'itunes:key', key);
   }
   const lines = parseTTML(new XMLSerializer().serializeToString(xml)).lines;
-  if (!lines.length || !lines.some((line) => line.words.some((word) => word.word.trim())))
+  // The parser defaults missing timestamps to zero. Untimed text must not be
+  // accepted as a usable lyric file merely because it has <p> elements.
+  if (
+    !lines.length ||
+    !lines.some(
+      (line) => line.endTime > line.startTime && line.words.some((word) => word.word.trim()),
+    )
+  )
     throw new LocalizedError('lyrics.noTimedLyricsFoundInThisTTML');
   for (const line of lines) {
     if (
@@ -60,11 +68,12 @@ export class Lyrics {
   private previous = -1;
   private fontText = '';
   private fontGeneration = 0;
+  private loadGeneration = 0;
   private disposed = false;
   private videoTime = 0;
   private lineEnds = new WeakMap<object, number>();
   private fadePositions = new WeakMap<object, number>();
-  private outlineId = `lyric-outline-${crypto.randomUUID()}`;
+  private outlineId = `lyric-outline-${randomUUID()}`;
   private outlineDilate: SVGFEMorphologyElement;
   private outlineFlood: SVGFEFloodElement;
   private outlineSVG: SVGSVGElement;
@@ -233,7 +242,17 @@ export class Lyrics {
     this.player.setWordFadeWidth(0.5);
     await this.frame(this.videoTime, 0, true);
   }
+  clear() {
+    this.loadGeneration++;
+    this.fontGeneration++;
+    this.fontText = '';
+    this.previous = -1;
+    this.player.intervals = [];
+    this.player.setLyricLines([]);
+    this.player.update(0);
+  }
   async load(text: string) {
+    const generation = ++this.loadGeneration;
     const lines = parseLyrics(text);
     this.fontText = lines
       .flatMap((line) => [
@@ -243,6 +262,7 @@ export class Lyrics {
       ])
       .join(' ');
     await this.refreshFont();
+    if (this.disposed || generation !== this.loadGeneration) return lines;
     // Initialize AMLL at the same effective timeline position as the first
     // rendered frame. Passing zero here and applying a negative offset on the
     // next call makes AMLL enter an already-playing first line after layout,

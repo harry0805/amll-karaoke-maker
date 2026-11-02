@@ -139,6 +139,7 @@ try {
   assert.match((await page.locator('#saved-empty').textContent())!, /导出完成的视频/);
 
   await page.locator('#tab-source').click();
+  await page.locator('#remove-video').click();
   await page
     .locator('#video-file')
     .setInputFiles({ name: 'broken.mp4', mimeType: 'video/mp4', buffer: Buffer.from('bad-video') });

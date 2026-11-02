@@ -22,7 +22,7 @@ if (token && enabled) {
           maskAllInputs: true,
           // Files and rendered lyrics stay on the device, including in replays.
           blockSelector:
-            '#stage, #video-name, #ttml-name, #saved-exports, [role="alert"], [data-error="true"]',
+            '#stage, #video-name, #ttml-name, #lyric-search, #lyric-source, #saved-exports, [role="alert"], [data-error="true"]',
           recordHeaders: false,
           recordBody: false,
         },

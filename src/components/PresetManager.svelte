@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { randomUUID } from '../uuid';
   import { message, errorMessage, type DisplayMessage } from '../messages';
   import { LocalizedError } from '../messages';
 
@@ -156,7 +157,7 @@
       if (presets.length >= MAX_PRESETS)
         throw new LocalizedError('presetManager.youCanStoreUpTo100Presets');
       const preset = {
-        id: crypto.randomUUID(),
+        id: randomUUID(),
         name: presetName(name),
         settings: pickPresetSettings(settings),
       };

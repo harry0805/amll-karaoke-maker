@@ -1,10 +1,27 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { t, translateMessage } from '../i18n';
 
   import type { StudioState } from '../studio.svelte';
   import Icon from './Icon.svelte';
   import LinkedText from './LinkedText.svelte';
+  import LyricSearch from './LyricSearch.svelte';
+  import SelectedSource from './SelectedSource.svelte';
   let { studio }: { studio: StudioState } = $props();
+
+  async function removeVideo() {
+    if (studio.session.exporting) return;
+    studio.clearVideo();
+    await tick();
+    document.getElementById('video-file')?.focus();
+  }
+
+  async function removeLyrics() {
+    if (studio.session.exporting) return;
+    studio.clearTTML();
+    await tick();
+    document.getElementById('search-lyrics')?.focus();
+  }
 </script>
 
 <section
@@ -13,48 +30,107 @@
   <h2
     class="mt-0 mb-[17px] flex items-center gap-[9px] text-[16px] font-semibold [&>svg]:text-accent-text"
   >
-    <Icon name="files" />{$t('sourcePanel.sourceFiles')}
+    <Icon name="video" />{$t('sourcePanel.video')}
   </h2>
-  <label
-    class="relative mb-2.5 block cursor-pointer rounded-lg border border-solid border-[#36363d] bg-panel p-3.5 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-accent focus-within:outline-solid hover:border-accent-border"
-    ><span class="flex items-center gap-2.5 text-[12px] text-muted [&>svg]:text-accent-text"
-      ><Icon name="video" /><strong class="text-[14px] font-medium text-foreground"
-        >{$t('sourcePanel.video')}</strong
-      ></span
-    ><input
-      class="absolute inset-0 h-full w-full cursor-pointer opacity-0 outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
-      id="video-file"
-      type="file"
-      accept="video/*,.mkv,.mov,.mp4,.webm"
+  {#if studio.session.videoFile}
+    <SelectedSource
+      id="selected-video"
+      nameId="video-name"
+      removeId="remove-video"
+      label={$t('sourcePanel.video')}
+      name={studio.session.videoFile.name}
+      icon="video"
+      removeLabel={$t('sourcePanel.removeVideo')}
       disabled={studio.session.exporting}
-      onchange={(event) => studio.loadVideo(event.currentTarget.files?.[0])}
-    /><span class="mt-[9px] block truncate text-[14px] text-[#ababba]" id="video-name"
-      >{studio.session.videoFile?.name || $t('sourcePanel.chooseVideo')}</span
-    ></label
+      onremove={removeVideo}
+    />
+  {:else}
+    <label
+      class="relative mb-2.5 block cursor-pointer rounded-lg border border-solid border-[#36363d] bg-panel p-3.5 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-accent focus-within:outline-solid hover:border-accent-border"
+      ><span class="flex items-center gap-2.5 text-[12px] text-muted [&>svg]:text-accent-text"
+        ><Icon name="video" /><strong class="text-[14px] font-medium text-foreground"
+          >{$t('sourcePanel.video')}</strong
+        ></span
+      ><input
+        class="absolute inset-0 h-full w-full cursor-pointer opacity-0 outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
+        id="video-file"
+        type="file"
+        accept="video/*,.mkv,.mov,.mp4,.webm"
+        disabled={studio.session.exporting}
+        onchange={(event) => studio.loadVideo(event.currentTarget.files?.[0])}
+      /><span class="mt-[9px] block truncate text-[14px] text-[#ababba]" id="video-name"
+        >{studio.session.videoFile?.name || $t('sourcePanel.chooseVideo')}</span
+      ></label
+    >
+  {/if}
+</section>
+<section
+  class="mb-6 border-0 border-b border-solid border-divider pb-6 last:mb-0 last:border-0 last:pb-0"
+>
+  <h2
+    class="mt-0 mb-[17px] flex items-center gap-[9px] text-[16px] font-semibold [&>svg]:text-accent-text"
   >
-  <label
-    class="relative mb-2.5 block cursor-pointer rounded-lg border border-solid border-[#36363d] bg-panel p-3.5 focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-accent focus-within:outline-solid hover:border-accent-border"
-    ><span class="flex items-center gap-2.5 text-[12px] text-muted [&>svg]:text-accent-text"
-      ><Icon name="file-music" /><strong class="text-[14px] font-medium text-foreground"
-        >{$t('sourcePanel.lyrics')}</strong
-      ></span
-    ><input
-      class="absolute inset-0 h-full w-full cursor-pointer opacity-0 outline-offset-[5px] focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-solid"
-      id="ttml-file"
-      type="file"
+    <Icon name="file-music" />{$t('sourcePanel.lyrics')}
+  </h2>
+  <div hidden={!!studio.session.ttmlFile}>
+    <LyricSearch {studio} />
+  </div>
+  {#if studio.session.ttmlFile}
+    <SelectedSource
+      id="selected-lyrics"
+      nameId="ttml-name"
+      removeId="remove-lyrics"
+      label={$t('sourcePanel.lyrics')}
+      name={studio.session.ttmlFile.name}
+      icon="file-music"
+      removeLabel={$t('sourcePanel.removeLyrics')}
       disabled={studio.session.exporting}
-      onchange={(event) => studio.loadTTML(event.currentTarget.files?.[0])}
-    /><span class="mt-[9px] block truncate text-[14px] text-[#ababba]" id="ttml-name"
-      >{$translateMessage(studio.session.ttmlName)}</span
-    ></label
-  >
-  <p
-    id="lyrics-info"
-    class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
-  >
+      onremove={removeLyrics}
+    />
+  {:else}
+    <div class="my-3 flex items-center gap-3 text-[12px] text-muted">
+      <span class="h-px flex-1 bg-divider"></span>{$t('sourcePanel.or')}<span
+        class="h-px flex-1 bg-divider"
+      ></span>
+    </div>
+    <label
+      class="relative block cursor-pointer rounded-lg border border-dashed border-control-border bg-panel p-3.5 text-center focus-within:outline-2 focus-within:outline-accent hover:border-accent-border"
+    >
+      <span class="flex items-center justify-center gap-2 text-[14px] font-medium"
+        ><Icon name="upload" />{$t('sourcePanel.uploadLyrics')}</span
+      >
+      <input
+        class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        id="ttml-file"
+        type="file"
+        accept=".ttml,.xml,application/ttml+xml,application/xml,text/xml"
+        disabled={studio.session.exporting}
+        aria-label={$t('sourcePanel.uploadLyrics')}
+        onchange={(event) => studio.loadTTML(event.currentTarget.files?.[0])}
+      />
+    </label>
+    <p id="ttml-name" class="mt-3 mb-0 text-[14px] text-muted">
+      {$translateMessage(studio.session.ttmlName)}
+    </p>
+  {/if}
+  <p id="lyrics-info" class="mt-3 mb-0 text-[12px] leading-relaxed text-muted">
     {$translateMessage(studio.session.lyricsInfo)}
   </p>
+  {#if studio.session.lyricSource}
+    <p id="lyric-source" class="mt-2 mb-0 text-[12px] leading-relaxed text-muted">
+      <LinkedText messageKey="lyricSearch.lyricsFrom"
+        >{#snippet link()}<a
+            class="text-accent-text underline underline-offset-2"
+            href={studio.session.lyricSource.url}
+            title={studio.session.lyricSource.title}
+            target="_blank"
+            rel="noopener noreferrer">lrc.red <Icon name="arrow-up-right" /></a
+          >{/snippet}</LinkedText
+      >
+    </p>
+  {/if}
   <p
+    hidden={!!studio.session.ttmlFile}
     class="mt-3 mb-0 text-[12px] leading-[1.5] text-muted [&_a]:text-accent-text [&_a]:underline-offset-[3px] [&_a_svg]:size-[13px] [&_a_svg]:align-[-2px]"
   >
     <LinkedText messageKey="sourcePanel.lyricsTool">

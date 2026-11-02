@@ -27,6 +27,14 @@ The app runs entirely in the browser. Svelte manages the UI, AMLL renders the ly
 
 Use Bun for dependencies and scripts. `bun install` also applies the local AMLL patch in `patches/`.
 
+### Lyric search
+
+Lyric search uses the browser API at [lrc.red](https://lrc.red/api). Every search and TTML request sends `X-Client-ID` identifying Karaoke Maker, `https://karaoke.hproject.xyz`, and the public contact email `contact@hproject.xyz`. `VITE_LRC_RED_CONTACT_EMAIL` overrides the email at build time; it is public, not a secret. If hosting a fork, update the app name and URL in `src/lrc-red.ts` and configure your own public contact email. An empty or invalid configured email prevents API requests.
+
+Keep the linked lrc.red credit in the search dialog and alongside imported lyrics, including the footer credit visible on the other editor tabs. Search runs only on submission; pagination and TTML downloads require a user action. Responses are cached briefly in memory, closing the dialog cancels pending requests, and HTTP 429 pauses requests using `Retry-After` when available (otherwise 60 seconds). Do not add bulk downloads or automatic retries.
+
+`bun tests/lyric-search-smoke.ts` starts a temporary development server and checks search, direct TTML selection, invalid lyrics, pagination, cancellation, credits, and the Chinese phone layout using mocked API responses. `bun test` also checks the API client.
+
 ## Find the code
 
 | Area                         | Files                                                                                      |

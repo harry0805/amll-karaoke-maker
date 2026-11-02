@@ -3,3 +3,7 @@ interface ImportMetaEnv {
   readonly VITE_POSTHOG_HOST?: string;
   readonly VITE_POSTHOG_ENABLED?: string;
 }
+
+interface ImportMetaEnv {
+  readonly VITE_LRC_RED_CONTACT_EMAIL?: string;
+}

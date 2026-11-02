@@ -65,6 +65,7 @@
   });
 
   function metadata() {
+    if (!studio.session.videoFile) return;
     pendingSeek = undefined;
     if (!Number.isFinite(video.duration) || !video.videoWidth) {
       studio.session.videoError = true;
@@ -143,11 +144,17 @@
           bind:this={video}
           playsinline
           onloadedmetadata={metadata}
+          onemptied={() => {
+            pendingSeek = undefined;
+            position = duration = width = height = 0;
+            paused = true;
+          }}
           onplay={() => (paused = false)}
           onpause={() => (paused = true)}
           onended={() => (paused = true)}
           onseeked={() => studio.requestSeekFrame()}
           onerror={() => {
+            if (!studio.session.videoFile) return;
             studio.session.loaded = false;
             studio.session.videoError = true;
             studio.session.errors.source = message('preview.unsupportedCodec');

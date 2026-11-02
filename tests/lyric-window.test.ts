@@ -37,6 +37,21 @@ test('background vocals continuing alone stay visible and keep their combined sl
   expect([...result.visible]).toEqual([0, 1]);
 });
 
+test('a delayed background keeps its group visible across the silent gap', () => {
+  const entries = [
+    { main: { start: 1000, end: 3000 }, background: { start: 5000, end: 7000 } },
+    { main: { start: 7000, end: 9000 } },
+    { main: { start: 9000, end: 11000 } },
+  ];
+  for (const time of [1000, 2999, 3000, 4000, 4999, 5000, 6999, 4000]) {
+    expect([...selectLyricWindow(entries, time, 2).active]).toEqual([0]);
+    expect([...selectLyricWindow(entries, time, 2).visible]).toEqual([0, 1]);
+    expect([...selectLyricWindow(entries, time, 1).visible]).toEqual([0]);
+  }
+  expect([...selectLyricWindow(entries, 7000, 2).active]).toEqual([1]);
+  expect([...selectLyricWindow(entries, 7000, 2).visible]).toEqual([1, 2]);
+});
+
 test('an inactive entry between overlapping singers does not bypass the limit', () => {
   const result = selectLyricWindow(
     [

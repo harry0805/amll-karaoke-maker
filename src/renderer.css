@@ -48,6 +48,12 @@
   display: none;
 }
 
+/* Plain line-synced text needs the contrast normally supplied by word masks.
+   AMLL writes full opacity inline; keep the outline and sublines independent. */
+.amll-lyric-player .karaoke-line-inactive [class*='_lyricMainLine'] {
+  opacity: 0.2 !important;
+}
+
 html:has(body.render),
 body.render {
   background: transparent !important;

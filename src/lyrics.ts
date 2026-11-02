@@ -327,11 +327,21 @@ export class Lyrics {
     const groups = this.player.currentLyricGroups;
     // KaraokePlayer keeps excluded upcoming lines below the viewport. Only
     // finished lines fade here, using media time for preview/export parity.
-    groups.forEach((group) => {
+    groups.forEach((group, index) => {
+      const interval = this.player.intervals[index];
       for (const line of [group.mainLine, group.bgLine]) {
         if (!line) continue;
         const end = this.lineEnds.get(line) ?? line.getLine().endTime;
         const element = (line as typeof line & { getElement(): HTMLElement }).getElement();
+        const start =
+          (line === group.mainLine ? interval?.main.start : interval?.background?.start) ??
+          line.getLine().startTime;
+        // Line-synced lyrics have plain text instead of AMLL's word masks.
+        // Give upcoming vocals the same dim fill, using each vocal's own timing.
+        element.classList.toggle(
+          'karaoke-line-inactive',
+          this.player._getIsNonDynamic() && time < start,
+        );
         // Use media time, not a CSS transition or wall clock, so seeking and
         // offline exports produce the same fade without delaying scrolling.
         const progress = Math.min(1, Math.max(0, (time - end) / LINE_FADE_MS));

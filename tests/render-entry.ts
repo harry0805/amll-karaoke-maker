@@ -23,7 +23,10 @@ async function main() {
       const config = await res.json();
       const lyrics = new Lyrics(stage, $('lyrics'), validateSettings(config.settings));
       await lyrics.load(config.ttml);
-      Object.assign(window, { lyricTestIntervals: lyrics.player.intervals });
+      Object.assign(window, {
+        lyricTestIntervals: lyrics.player.intervals,
+        lyricTestGroups: lyrics.player.currentLyricGroups.map((group) => group.element),
+      });
       window.renderFrame = (time, delta) => lyrics.frame(time, delta);
       window.rendererReady = true;
     } catch (error) {

@@ -18,7 +18,11 @@ export function selectLyricWindow(entries: LyricWindowEntry[], time: number, lim
   const active = new Set<number>();
   let count = 0;
   entries.forEach((entry, index) => {
-    if (isSinging(entry.main, time) || isSinging(entry.background, time)) {
+    // Once a group reveals its background, keep the row through any gap
+    // between vocals. Highlighting and exit fades still use each vocal's timing.
+    const start = Math.min(entry.main.start, entry.background?.start ?? entry.main.start);
+    const end = Math.max(entry.main.end, entry.background?.end ?? entry.main.end);
+    if (time >= start && time < end) {
       active.add(index);
       if (!entry.backgroundOnly) count++;
     }

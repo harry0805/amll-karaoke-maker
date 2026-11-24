@@ -34,6 +34,8 @@ await command([
   'libx264',
   '-pix_fmt',
   'yuv420p',
+  '-vf',
+  'setparams=range=limited:color_primaries=bt709:color_trc=bt709:colorspace=bt709',
   '-c:a',
   'aac',
   '-shortest',
@@ -107,6 +109,10 @@ try {
   assert.equal(v.nb_frames, '48');
   assert.equal(v.avg_frame_rate, '24/1');
   assert.equal(v.codec_name, 'h264');
+  assert.equal(v.color_range, 'tv');
+  assert.equal(v.color_space, 'bt709');
+  assert.equal(v.color_transfer, 'bt709');
+  assert.equal(v.color_primaries, 'bt709');
   assert.equal(a.codec_name, 'aac');
   assert(Math.abs(Number(info.format.duration) - 2) < 0.06);
   const audioPackets = async (path: string) =>
@@ -152,7 +158,34 @@ try {
     { stdout: 'pipe', stderr: 'inherit' },
   );
   const pixels = new Uint8Array(await new Response(raw.stdout).arrayBuffer());
-  await raw.exited;
+  assert.equal(await raw.exited, 0);
+  const reference = Bun.spawn(
+    [
+      'ffmpeg',
+      '-v',
+      'error',
+      '-i',
+      source,
+      '-frames:v',
+      '1',
+      '-vf',
+      'crop=2:2:0:0',
+      '-f',
+      'rawvideo',
+      '-pix_fmt',
+      'rgb24',
+      '-',
+    ],
+    { stdout: 'pipe', stderr: 'inherit' },
+  );
+  const sourcePixels = new Uint8Array(await new Response(reference.stdout).arrayBuffer());
+  assert.equal(await reference.exited, 0);
+  for (let channel = 0; channel < 3; channel++) {
+    assert(
+      Math.abs(pixels[channel]! - sourcePixels[channel]!) <= 5,
+      'Unshaded background should retain the source RGB levels',
+    );
+  }
   let gold = 0,
     pink = 0;
   for (let i = 0; i < pixels.length; i += 3) {

@@ -39,6 +39,7 @@
     },
   },
   "patchedDependencies": {
+    "mediabunny@1.65.2": "patches/mediabunny@1.65.2.patch",
     "@applemusic-like-lyrics/core@0.5.2": "patches/@applemusic-like-lyrics%2Fcore@0.5.2.patch",
   },
   "packages": {

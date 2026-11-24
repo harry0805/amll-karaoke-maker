@@ -16,6 +16,8 @@ export { snapshotLyrics };
 import { Lyrics } from './lyrics';
 import type { SettingsSnapshot } from './settings';
 import { writeStoredExport, type StoredExport } from './export-storage';
+import { isLimitedRec709, packRec709Frame } from './rec709-frame';
+import { createRec709Packer } from './rec709-gpu';
 
 export interface ExportProgress {
   frames: number;
@@ -71,6 +73,7 @@ async function renderToFile(
   let conversion: Conversion | undefined;
   let lyrics: Lyrics | undefined;
   let canvas: HTMLCanvasElement | undefined;
+  let rec709Packer: ReturnType<typeof createRec709Packer> = null;
   let audioPackets: AsyncGenerator<import('mediabunny').EncodedPacket, void, unknown> | undefined;
   const host = document.createElement('div');
   host.style.cssText = 'position:fixed;left:-100000px;top:0;pointer-events:none;';
@@ -85,6 +88,7 @@ async function renderToFile(
       throw new LocalizedError('browserExport.thisBrowserCannotDecodeTheSourceVideo');
     const width = Math.ceil((await track.getDisplayWidth()) / 2) * 2;
     const height = Math.ceil((await track.getDisplayHeight()) / 2) * 2;
+    const preserveRec709 = isLimitedRec709(await track.getColorSpace());
     const duration = await input.computeDuration();
     const audioTrack = await input.getPrimaryAudioTrack();
     const copyAudio = audioTrack && (await audioTrack.getCodec()) === 'aac';
@@ -125,7 +129,11 @@ async function renderToFile(
     canvas = document.createElement('canvas');
     canvas.width = preview.width = width;
     canvas.height = preview.height = height;
-    const context = canvas.getContext('2d', { alpha: false })!;
+    if (preserveRec709) rec709Packer = createRec709Packer(width, height);
+    const context = canvas.getContext('2d', {
+      alpha: false,
+      willReadFrequently: preserveRec709 && !rec709Packer,
+    })!;
     const previewContext = preview.getContext('2d', { alpha: false })!;
     let previous = 0;
     let frames = 0;
@@ -165,7 +173,16 @@ async function renderToFile(
             finishing: false,
             fps: renderFps(),
           });
-          return canvas!;
+          // Encoding the RGB canvas directly lets WebCodecs choose full-range sRGB.
+          // Give it actual limited-range samples when the source uses limited Rec.709.
+          if (!preserveRec709) return canvas!;
+          if (rec709Packer) {
+            const packed = rec709Packer.pack(canvas!, sample.timestamp, sample.duration);
+            if (packed) return packed;
+            rec709Packer.dispose();
+            rec709Packer = null;
+          }
+          return packRec709Frame(context, sample.timestamp, sample.duration);
         },
       },
       audio: { discard: true },
@@ -200,6 +217,7 @@ async function renderToFile(
     input.dispose();
     lyrics?.dispose();
     host.remove();
+    rec709Packer?.dispose();
     if (canvas) canvas.width = canvas.height = 0;
   }
 }

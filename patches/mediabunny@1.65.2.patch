@@ -1,0 +1,293 @@
+diff --git a/dist/modules/src/codec-data.d.ts b/dist/modules/src/codec-data.d.ts
+index b6d4a0f..9e82157 100644
+--- a/dist/modules/src/codec-data.d.ts
++++ b/dist/modules/src/codec-data.d.ts
+@@ -85,6 +85,8 @@ export type AvcSpsInfo = {
+     numReorderFrames: number;
+     maxDecFrameBuffering: number;
+     vuiParametersFlagBitOffset: number;
++    videoSignalTypeFlagBitOffset: number | null;
++    vuiEndBitOffset: number;
+     bitstreamRestrictionFlagBitOffset: number | null;
+     bitstreamRestrictionFlag: number | null;
+ };
+@@ -97,6 +99,7 @@ export declare const parseAvcSps: (sps: Uint8Array) => AvcSpsInfo | null;
+  * See https://github.com/Vanilagy/mediabunny/issues/488
+  */
+ export declare const addAvcBitstreamRestriction: (sps: AvcSpsInfo) => Uint8Array<ArrayBuffer>;
++export declare const addMissingAvcColorInfo: (description: Uint8Array, colorSpace: VideoColorSpaceInit | undefined) => Uint8Array;
+ export type HevcDecoderConfigurationRecord = {
+     configurationVersion: number;
+     generalProfileSpace: number;
+diff --git a/dist/modules/src/codec-data.js b/dist/modules/src/codec-data.js
+index feaf038..ae29d17 100644
+--- a/dist/modules/src/codec-data.js
++++ b/dist/modules/src/codec-data.js
+@@ -6,7 +6,7 @@
+  * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+  */
+ import { AVC_LEVEL_TABLE, VP9_LEVEL_TABLE } from './codec.js';
+-import { assert, assertNever, base64ToBytes, bytesToBase64, keyValueIterator, getUint24, last, readExpGolomb, readSignedExpGolomb, textDecoder, textEncoder, toDataView, toUint8Array, isChromium, popcount, setUint24, writeExpGolomb, } from './misc.js';
++import { assert, assertNever, base64ToBytes, bytesToBase64, keyValueIterator, getUint24, last, readExpGolomb, readSignedExpGolomb, textDecoder, textEncoder, toDataView, toUint8Array, isChromium, popcount, setUint24, writeExpGolomb, COLOR_PRIMARIES_MAP, TRANSFER_CHARACTERISTICS_MAP, MATRIX_COEFFICIENTS_MAP, colorSpaceIsComplete, } from './misc.js';
+ import { Logging } from './logging.js';
+ import { AC3_SAMPLE_RATES, EAC3_REDUCED_SAMPLE_RATES } from '../shared/ac3-misc.js';
+ import { Bitstream } from '../shared/bitstream.js';
+@@ -532,6 +532,7 @@ export const parseAvcSps = (sps) => {
+         let maxDecFrameBuffering = null;
+         let bitstreamRestrictionFlagBitOffset = null;
+         let bitstreamRestrictionFlag = null;
++        let videoSignalTypeFlagBitOffset = null;
+         const vuiParametersFlagBitOffset = bitstream.pos;
+         const vuiParametersPresentFlag = bitstream.readBits(1);
+         if (vuiParametersPresentFlag) {
+@@ -555,6 +556,7 @@ export const parseAvcSps = (sps) => {
+             if (overscanInfoPresentFlag) {
+                 bitstream.skipBits(1); // overscan_appropriate_flag
+             }
++            videoSignalTypeFlagBitOffset = bitstream.pos;
+             const videoSignalTypePresentFlag = bitstream.readBits(1);
+             if (videoSignalTypePresentFlag) {
+                 bitstream.skipBits(3); // video_format
+@@ -603,6 +605,7 @@ export const parseAvcSps = (sps) => {
+                 maxDecFrameBuffering = Math.min(readExpGolomb(bitstream), 16);
+             }
+         }
++        const vuiEndBitOffset = bitstream.pos;
+         if (numReorderFrames === null) {
+             assert(maxDecFrameBuffering === null);
+             const constraintSet3Flag = constraintFlags & 0b00010000;
+@@ -648,6 +651,8 @@ export const parseAvcSps = (sps) => {
+             numReorderFrames,
+             maxDecFrameBuffering,
+             vuiParametersFlagBitOffset,
++            videoSignalTypeFlagBitOffset,
++            vuiEndBitOffset,
+             bitstreamRestrictionFlagBitOffset,
+             bitstreamRestrictionFlag,
+         };
+@@ -743,6 +748,59 @@ export const iterateHevcNalUnits = (packetData, decoderConfig) => {
+ export const extractNalUnitTypeForHevc = (byte) => {
+     return (byte >> 1) & 0x3F;
+ };
++/** Copies complete encoder color metadata into AVC parameter sets that omit video signal information. */
++export const addMissingAvcColorInfo = (description, colorSpace) => {
++    if (!colorSpaceIsComplete(colorSpace) || typeof colorSpace.fullRange !== 'boolean')
++        return description;
++    const primaries = COLOR_PRIMARIES_MAP[colorSpace.primaries];
++    const transfer = TRANSFER_CHARACTERISTICS_MAP[colorSpace.transfer];
++    const matrix = MATRIX_COEFFICIENTS_MAP[colorSpace.matrix];
++    if (primaries === undefined || transfer === undefined || matrix === undefined)
++        return description;
++    const record = deserializeAvcDecoderConfigurationRecord(description);
++    if (!record)
++        return description;
++    const sequenceParameterSets = record.sequenceParameterSets.map((bytes) => {
++        const sps = parseAvcSps(bytes);
++        if (!sps)
++            return bytes;
++        const { emulationUnpreventedBytes, vuiEndBitOffset, vuiParametersFlagBitOffset, videoSignalTypeFlagBitOffset } = sps;
++        const oldBits = new Bitstream(emulationUnpreventedBytes);
++        oldBits.pos = vuiEndBitOffset;
++        if (oldBits.readBits(1) !== 1)
++            return bytes; // Missing RBSP stop bit
++        const signalOffset = videoSignalTypeFlagBitOffset ?? vuiParametersFlagBitOffset;
++        oldBits.pos = signalOffset;
++        if (oldBits.readBits(1) !== 0)
++            return bytes; // Preserve an explicit video signal.
++        oldBits.pos = 0;
++        const newBits = new Bitstream(new Uint8Array(emulationUnpreventedBytes.length + 8));
++        newBits.copyBits(signalOffset, oldBits);
++        oldBits.skipBits(1);
++        if (videoSignalTypeFlagBitOffset === null) {
++            newBits.writeBits(1, 1); // vui_parameters_present_flag
++            newBits.writeBits(2, 0); // aspect_ratio_info_present_flag, overscan_info_present_flag
++        }
++        newBits.writeBits(1, 1); // video_signal_type_present_flag
++        newBits.writeBits(3, 5); // video_format: unspecified
++        newBits.writeBits(1, Number(colorSpace.fullRange));
++        newBits.writeBits(1, 1); // colour_description_present_flag
++        newBits.writeBits(8, primaries);
++        newBits.writeBits(8, transfer);
++        newBits.writeBits(8, matrix);
++        if (videoSignalTypeFlagBitOffset === null) {
++            newBits.writeBits(6, 0); // Remaining VUI flags
++        }
++        else {
++            newBits.copyBits(vuiEndBitOffset - oldBits.pos, oldBits);
++        }
++        newBits.writeBits(1, 1); // rbsp_stop_one_bit
++        return addEmulationPreventionBytes(newBits.bytes.subarray(0, Math.ceil(newBits.pos / 8)));
++    });
++    if (sequenceParameterSets.every((bytes, index) => bytes === record.sequenceParameterSets[index]))
++        return description;
++    return serializeAvcDecoderConfigurationRecord({ ...record, sequenceParameterSets });
++};
+ /** Parses an HEVC SPS (Sequence Parameter Set) to extract video information. */
+ export const parseHevcSps = (sps) => {
+     try {
+diff --git a/dist/modules/src/media-source.js b/dist/modules/src/media-source.js
+index 57cfe8f..b44a4c3 100644
+--- a/dist/modules/src/media-source.js
++++ b/dist/modules/src/media-source.js
+@@ -67,7 +67,7 @@ import { EncodedPacket } from './packet.js';
+ import { AudioSample, audioSampleToInterleavedFormat, getBytesPerSample, toInterleavedAudioFormat, VideoSample, } from './sample.js';
+ import { buildAudioEncoderConfig, buildQuantizerEncodeOptions, buildVideoEncoderConfigs, resolveQuality, validateAudioEncodingConfig, validateVideoEncodingConfig, } from './encode.js';
+ import { AudioResampler } from './resample.js';
+-import { deserializeAvcDecoderConfigurationRecord, determineVideoPacketType, extractAv1CodecInfoFromPacket, extractAvcDecoderConfigurationRecord, extractHevcDecoderConfigurationRecord, extractVp9CodecInfoFromPacket, parseOpusIdentificationHeader, serializeAvcDecoderConfigurationRecord, } from './codec-data.js';
++import { addMissingAvcColorInfo, deserializeAvcDecoderConfigurationRecord, determineVideoPacketType, extractAv1CodecInfoFromPacket, extractAvcDecoderConfigurationRecord, extractHevcDecoderConfigurationRecord, extractVp9CodecInfoFromPacket, parseOpusIdentificationHeader, serializeAvcDecoderConfigurationRecord, } from './codec-data.js';
+ import { Logging } from './logging.js';
+ import { readEsDescriptor } from './isobmff/isobmff-reader.js';
+ import { FileSlice } from './reader.js';
+@@ -845,6 +845,10 @@ class VideoEncoderWrapper {
+                     meta.decoderConfig.description = record;
+                 }
+             }
++            // Use the same color metadata in the AVC parameter sets and the container.
++            if (this.encodingConfig.codec === 'avc' && meta.decoderConfig.description) {
++                meta.decoderConfig.description = addMissingAvcColorInfo(toUint8Array(meta.decoderConfig.description), meta.decoderConfig.colorSpace);
++            }
+         }
+         let microsecondTimestamp = colorChunk.timestamp;
+         if (this.chunkTimestampsAreShiftedByDuration) {
+diff --git a/src/codec-data.ts b/src/codec-data.ts
+index fd9b10e..b0b516c 100644
+--- a/src/codec-data.ts
++++ b/src/codec-data.ts
+@@ -26,6 +26,10 @@ import {
+ 	popcount,
+ 	setUint24,
+ 	writeExpGolomb,
++	COLOR_PRIMARIES_MAP,
++	TRANSFER_CHARACTERISTICS_MAP,
++	MATRIX_COEFFICIENTS_MAP,
++	colorSpaceIsComplete,
+ } from './misc';
+ import { Logging } from './logging';
+ import { PacketType } from './packet';
+@@ -533,6 +537,8 @@ export type AvcSpsInfo = {
+ 	numReorderFrames: number;
+ 	maxDecFrameBuffering: number;
+ 	vuiParametersFlagBitOffset: number;
++	videoSignalTypeFlagBitOffset: number | null;
++	vuiEndBitOffset: number;
+ 	bitstreamRestrictionFlagBitOffset: number | null;
+ 	bitstreamRestrictionFlag: number | null;
+ };
+@@ -700,6 +706,7 @@ export const parseAvcSps = (sps: Uint8Array): AvcSpsInfo | null => {
+ 		let bitstreamRestrictionFlagBitOffset: number | null = null;
+ 		let bitstreamRestrictionFlag: number | null = null;
+ 
++		let videoSignalTypeFlagBitOffset: number | null = null;
+ 		const vuiParametersFlagBitOffset = bitstream.pos;
+ 		const vuiParametersPresentFlag = bitstream.readBits(1);
+ 		if (vuiParametersPresentFlag) {
+@@ -725,6 +732,7 @@ export const parseAvcSps = (sps: Uint8Array): AvcSpsInfo | null => {
+ 				bitstream.skipBits(1); // overscan_appropriate_flag
+ 			}
+ 
++			videoSignalTypeFlagBitOffset = bitstream.pos;
+ 			const videoSignalTypePresentFlag = bitstream.readBits(1);
+ 			if (videoSignalTypePresentFlag) {
+ 				bitstream.skipBits(3); // video_format
+@@ -781,6 +789,8 @@ export const parseAvcSps = (sps: Uint8Array): AvcSpsInfo | null => {
+ 			}
+ 		}
+ 
++		const vuiEndBitOffset = bitstream.pos;
++
+ 		if (numReorderFrames === null) {
+ 			assert(maxDecFrameBuffering === null);
+ 			const constraintSet3Flag = constraintFlags & 0b00010000;
+@@ -839,6 +849,8 @@ export const parseAvcSps = (sps: Uint8Array): AvcSpsInfo | null => {
+ 			numReorderFrames,
+ 			maxDecFrameBuffering,
+ 			vuiParametersFlagBitOffset,
++			videoSignalTypeFlagBitOffset,
++			vuiEndBitOffset,
+ 			bitstreamRestrictionFlagBitOffset,
+ 			bitstreamRestrictionFlag,
+ 		};
+@@ -916,6 +928,56 @@ export const addAvcBitstreamRestriction = (sps: AvcSpsInfo) => {
+ 	return addEmulationPreventionBytes(modifiedBytes.subarray(0, byteLength));
+ };
+ 
++/** Copies complete encoder color metadata into AVC parameter sets that omit video signal information. */
++export const addMissingAvcColorInfo = (description: Uint8Array, colorSpace: VideoColorSpaceInit | undefined) => {
++	if (!colorSpaceIsComplete(colorSpace) || typeof colorSpace.fullRange !== 'boolean') return description;
++	const primaries = COLOR_PRIMARIES_MAP[colorSpace.primaries];
++	const transfer = TRANSFER_CHARACTERISTICS_MAP[colorSpace.transfer];
++	const matrix = MATRIX_COEFFICIENTS_MAP[colorSpace.matrix];
++	if (primaries === undefined || transfer === undefined || matrix === undefined) return description;
++
++	const record = deserializeAvcDecoderConfigurationRecord(description);
++	if (!record) return description;
++	const sequenceParameterSets = record.sequenceParameterSets.map((bytes) => {
++		const sps = parseAvcSps(bytes);
++		if (!sps) return bytes;
++		const { emulationUnpreventedBytes, vuiEndBitOffset, vuiParametersFlagBitOffset, videoSignalTypeFlagBitOffset } = sps;
++		const oldBits = new Bitstream(emulationUnpreventedBytes);
++		oldBits.pos = vuiEndBitOffset;
++		if (oldBits.readBits(1) !== 1) return bytes; // Missing RBSP stop bit
++		const signalOffset = videoSignalTypeFlagBitOffset ?? vuiParametersFlagBitOffset;
++		oldBits.pos = signalOffset;
++		if (oldBits.readBits(1) !== 0) return bytes; // Preserve an explicit video signal.
++
++		oldBits.pos = 0;
++		const newBits = new Bitstream(new Uint8Array(emulationUnpreventedBytes.length + 8));
++		newBits.copyBits(signalOffset, oldBits);
++		oldBits.skipBits(1);
++
++		if (videoSignalTypeFlagBitOffset === null) {
++			newBits.writeBits(1, 1); // vui_parameters_present_flag
++			newBits.writeBits(2, 0); // aspect_ratio_info_present_flag, overscan_info_present_flag
++		}
++		newBits.writeBits(1, 1); // video_signal_type_present_flag
++		newBits.writeBits(3, 5); // video_format: unspecified
++		newBits.writeBits(1, Number(colorSpace.fullRange));
++		newBits.writeBits(1, 1); // colour_description_present_flag
++		newBits.writeBits(8, primaries);
++		newBits.writeBits(8, transfer);
++		newBits.writeBits(8, matrix);
++
++		if (videoSignalTypeFlagBitOffset === null) {
++			newBits.writeBits(6, 0); // Remaining VUI flags
++		} else {
++			newBits.copyBits(vuiEndBitOffset - oldBits.pos, oldBits);
++		}
++		newBits.writeBits(1, 1); // rbsp_stop_one_bit
++		return addEmulationPreventionBytes(newBits.bytes.subarray(0, Math.ceil(newBits.pos / 8)));
++	});
++	if (sequenceParameterSets.every((bytes, index) => bytes === record.sequenceParameterSets[index])) return description;
++	return serializeAvcDecoderConfigurationRecord({ ...record, sequenceParameterSets });
++};
++
+ // Data specified in ISO 14496-15
+ export type HevcDecoderConfigurationRecord = {
+ 	configurationVersion: number;
+diff --git a/src/media-source.ts b/src/media-source.ts
+index 7130c9e..a63a128 100644
+--- a/src/media-source.ts
++++ b/src/media-source.ts
+@@ -77,6 +77,7 @@ import {
+ } from './encode';
+ import { AudioResampler } from './resample';
+ import {
++	addMissingAvcColorInfo,
+ 	deserializeAvcDecoderConfigurationRecord,
+ 	determineVideoPacketType,
+ 	extractAv1CodecInfoFromPacket,
+@@ -1004,6 +1005,14 @@ class VideoEncoderWrapper {
+ 					meta.decoderConfig.description = record;
+ 				}
+ 			}
++
++			// Use the same color metadata in the AVC parameter sets and the container.
++			if (this.encodingConfig.codec === 'avc' && meta.decoderConfig.description) {
++				meta.decoderConfig.description = addMissingAvcColorInfo(
++					toUint8Array(meta.decoderConfig.description),
++					meta.decoderConfig.colorSpace,
++				);
++			}
+ 		}
+ 
+ 		let microsecondTimestamp = colorChunk.timestamp;
